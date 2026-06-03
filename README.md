@@ -88,6 +88,8 @@ EXPO_PUBLIC_API_URL=http://SEU_IP_LOCAL:3001
 ### Rodar
 
 ```bash
+npm run tunnel
+
 npx expo start
 ```
 
@@ -138,7 +140,7 @@ npm run build
 cd peteco-ia
 
 # Criar ambiente virtual (recomendado)
-python -m venv venv
+py -m venv venv
 
 # Ativar — Windows
 venv\Scripts\activate

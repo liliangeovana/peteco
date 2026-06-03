@@ -12,3 +12,14 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
     detectSessionInUrl: false,
   },
 });
+
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'TOKEN_REFRESHED' && !session) {
+    supabase.auth.signOut();
+  }
+});
+
+// Limpa sessão inválida na inicialização
+supabase.auth.getSession().catch(() => {
+  supabase.auth.signOut();
+});

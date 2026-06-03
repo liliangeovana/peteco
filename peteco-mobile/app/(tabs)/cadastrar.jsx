@@ -34,20 +34,26 @@ export default function CadastrarPet() {
 
       {/* Foto */}
       <TouchableOpacity style={s.fotoBtn} onPress={selecionarFoto} activeOpacity={0.8} disabled={validandoFoto}>
-        {validandoFoto ? (
-          <View style={s.fotoPlaceholder}>
-            <ActivityIndicator color={colors.primary} size="large" />
-            <Text style={[s.fotoTexto, { marginTop: 8 }]}>Validando com IA...</Text>
-          </View>
-        ) : foto ? (
+        {foto ? (
           <View>
             <Image source={{ uri: foto }} style={s.fotoPreview} />
-            {fotoValidada && (
+            {validandoFoto && (
+              <View style={s.fotoLoadingOverlay}>
+                <ActivityIndicator color="#fff" size="large" />
+                <Text style={s.fotoLoadingTexto}>Analisando com IA...</Text>
+              </View>
+            )}
+            {!validandoFoto && fotoValidada && (
               <View style={s.fotoValidadaBadge}>
                 <Ionicons name="checkmark-circle" size={14} color={colors.success} />
                 <Text style={s.fotoValidadaTexto}>Validado pela IA</Text>
               </View>
             )}
+          </View>
+        ) : validandoFoto ? (
+          <View style={s.fotoPlaceholder}>
+            <ActivityIndicator color={colors.primary} size="large" />
+            <Text style={[s.fotoTexto, { marginTop: 8 }]}>Analisando com IA...</Text>
           </View>
         ) : (
           <View style={s.fotoPlaceholder}>
@@ -243,6 +249,19 @@ const s = StyleSheet.create({
     fontSize: 14,
     color: colors.primary,
     ...font.medium,
+  },
+  fotoLoadingOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  fotoLoadingTexto: {
+    color: '#fff',
+    fontSize: 13,
+    ...font.bold,
   },
   fotoValidadaBadge: {
     position: 'absolute',

@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import api from '../../../shared/lib/api';
 import { supabase } from '../../../shared/lib/supabase';
 
@@ -37,7 +37,7 @@ export async function marcarEncontrado(id, accessToken) {
 }
 
 export async function validarFoto(imagemBase64) {
-  const { data } = await api.post('/pets/validar-foto', { imagemBase64 });
+  const { data } = await api.post('/pets/validar-foto', { imagemBase64 }, { timeout: 30000 });
   return data;
 }
 
@@ -64,5 +64,5 @@ export async function uploadFoto(uri) {
 }
 
 export async function lerBase64(uri) {
-  return FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+  return FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
 }

@@ -33,7 +33,7 @@ export default function useCadastrarController(onSuccess) {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 0.5,
+      quality: 0.3,
     });
     if (res.canceled) return;
 
@@ -53,8 +53,11 @@ export default function useCadastrarController(onSuccess) {
       } else {
         setFotoValidada(true);
       }
-    } catch {
-      setFotoValidada(true);
+    } catch (err) {
+      setFoto(null);
+      setFotoValidada(false);
+      const detalhe = err?.response?.data?.erro || err?.message || 'Erro desconhecido';
+      Alert.alert('Erro na validação', detalhe);
     } finally {
       setValidandoFoto(false);
     }
@@ -133,6 +136,10 @@ export default function useCadastrarController(onSuccess) {
   const enviar = async () => {
     if (!form.nome || !form.especie) {
       Alert.alert('Preencha pelo menos o nome e a espécie');
+      return;
+    }
+    if (foto && !fotoValidada) {
+      Alert.alert('Foto inválida', 'A foto selecionada não foi aprovada pela IA. Selecione uma foto do seu pet.');
       return;
     }
     setEnviando(true);

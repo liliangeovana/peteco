@@ -1,10 +1,15 @@
 import { Router } from 'express';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '../lib/supabase.js';
 import { autenticar } from '../middlewares/auth.js';
 
 const router = Router();
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const MODEL_OPTIONS = { apiVersion: 'v1' };
+
+function toBase64(imagemBase64) {
+  return imagemBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+}
 
 // GET /pets — lista pets com filtros opcionais
 router.get('/', async (req, res) => {
@@ -33,25 +38,18 @@ router.post('/validar-foto', async (req, res) => {
     const { imagemBase64 } = req.body;
     if (!imagemBase64) return res.status(400).json({ erro: 'imagemBase64 é obrigatório' });
 
-    const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 256,
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: 'image/jpeg', data: imagemBase64 },
-          },
-          {
-            type: 'text',
-            text: 'Analise esta imagem. Responda APENAS com JSON válido, sem markdown: {"ehAnimal": boolean, "temConteudoSensivel": boolean, "motivo": string_ou_null}. ehAnimal=true se a imagem contém um animal doméstico (cachorro, gato, coelho, hamster, etc). temConteudoSensivel=true se há nudez, violência ou conteúdo impróprio. motivo=null se aprovada, ou uma frase curta explicando a reprovação.',
-          },
-        ],
-      }],
-    });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }, MODEL_OPTIONS);
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          data: toBase64(imagemBase64),
+          mimeType: 'image/jpeg',
+        },
+      },
+      'Analise esta imagem. Responda APENAS com JSON válido, sem markdown: {"ehAnimal": boolean, "temConteudoSensivel": boolean, "motivo": string_ou_null}. ehAnimal=true se a imagem contém um animal doméstico (cachorro, gato, coelho, hamster, etc). temConteudoSensivel=true se há nudez, violência ou conteúdo impróprio. motivo=null se aprovada, ou uma frase curta em português explicando a reprovação.',
+    ]);
 
-    const texto = response.content[0].text.trim().replace(/```json|```/g, '').trim();
+    const texto = result.response.text().trim().replace(/```json|```/g, '').trim();
     const json = JSON.parse(texto);
     const aprovada = json.ehAnimal === true && json.temConteudoSensivel === false;
 
@@ -88,25 +86,18 @@ router.post('/buscar-similares', async (req, res) => {
       .map((p, i) => `${i + 1}. id="${p.id}" nome="${p.nome}" especie="${p.especie}" raca="${p.raca || '?'}" cor="${p.cor || '?'}" cidade="${p.cidade || '?'}"`)
       .join('\n');
 
-    const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 512,
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: 'image/jpeg', data: imagemBase64 },
-          },
-          {
-            type: 'text',
-            text: `Esta foto é de um pet: especie="${especie || '?'}", cor="${cor || '?'}", raca="${raca || '?'}". Compare visualmente e por atributos com os pets cadastrados abaixo. Retorne APENAS JSON array sem markdown com os até 3 mais similares (score >= 5, escala 1-10): [{"id":"uuid_exato","score":number,"justificativa":"frase curta"}]. Se nenhum tiver score >= 5, retorne []. Pets cadastrados:\n${listaPets}`,
-          },
-        ],
-      }],
-    });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }, MODEL_OPTIONS);
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          data: toBase64(imagemBase64),
+          mimeType: 'image/jpeg',
+        },
+      },
+      `Esta foto é de um pet: especie="${especie || '?'}", cor="${cor || '?'}", raca="${raca || '?'}". Compare visualmente e por atributos com os pets cadastrados abaixo. Retorne APENAS JSON array sem markdown com os até 3 mais similares (score >= 5, escala 1-10): [{"id":"uuid_exato","score":number,"justificativa":"frase curta em português"}]. Se nenhum tiver score >= 5, retorne []. Pets cadastrados:\n${listaPets}`,
+    ]);
 
-    const texto = response.content[0].text.trim().replace(/```json|```/g, '').trim();
+    const texto = result.response.text().trim().replace(/```json|```/g, '').trim();
     const similares = JSON.parse(texto);
 
     const resultado = similares

@@ -27,11 +27,29 @@ export async function logout() {
 }
 
 export async function obterUsuario() {
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error) {
+      await supabase.auth.signOut();
+      return null;
+    }
+    return user;
+  } catch {
+    await supabase.auth.signOut();
+    return null;
+  }
 }
 
 export async function obterSessao() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session;
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) {
+      await supabase.auth.signOut();
+      return null;
+    }
+    return session;
+  } catch {
+    await supabase.auth.signOut();
+    return null;
+  }
 }
