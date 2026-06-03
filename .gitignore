@@ -1,0 +1,95 @@
+# ──────────────────────────────────────────────────────────
+#  PETECO — .gitignore raiz (mobile · api · web · ia)
+# ──────────────────────────────────────────────────────────
+
+# ── Variáveis de ambiente (NUNCA commitar) ────────────────
+.env
+.env.*
+!.env.example
+
+# ── Node / npm (api · web · mobile) ──────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+.pnpm-store/
+
+# ── Build outputs ─────────────────────────────────────────
+dist/
+dist-ssr/
+build/
+out/
+*.local
+
+# ── Expo / React Native (mobile) ─────────────────────────
+.expo/
+web-build/
+expo-env.d.ts
+.metro-health-check*
+/peteco-mobile/ios/
+/peteco-mobile/android/
+*.orig.*
+
+# ── Certificados / chaves nativas (mobile) ───────────────
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# ── Python / pip (ia) ────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+.eggs/
+.venv/
+venv/
+env/
+ENV/
+dist/
+*.dist-info/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ── TypeScript ────────────────────────────────────────────
+*.tsbuildinfo
+
+# ── Logs ─────────────────────────────────────────────────
+logs/
+*.log
+
+# ── Editores / IDEs ───────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*.swo
+.history/
+
+# ── Sistema operacional ───────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Temporários ───────────────────────────────────────────
+*.tmp
+*.temp
+.cache/
+.kotlin/

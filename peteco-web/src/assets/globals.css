@@ -1,0 +1,215 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Nunito', sans-serif;
+    background-color: #F7F5FB;
+    color: #1A1626;
+  }
+  a { text-decoration: none; }
+}
+
+@layer components {
+
+  /* ── Navbar ─────────────────────────────────────── */
+  .navbar {
+    @apply flex items-center justify-between px-6 py-3 bg-white sticky top-0 z-50;
+    border-bottom: 1.5px solid #E5E0F0;
+    box-shadow: 0 2px 12px 0 rgba(124,58,237,0.08);
+  }
+  .navbar-logo {
+    @apply flex items-center gap-2 font-black text-xl tracking-tight;
+    color: #7C3AED;
+  }
+  .navbar-links {
+    @apply flex items-center gap-0.5;
+  }
+  .navbar-link {
+    @apply flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-xl transition-all;
+    color: #6B6578;
+  }
+  .navbar-link:hover {
+    color: #7C3AED;
+    background-color: #EDE9FE;
+  }
+  .navbar-link-active {
+    color: #7C3AED !important;
+    background-color: #EDE9FE !important;
+    font-weight: 800;
+  }
+
+  /* ── Cards ───────────────────────────────────────── */
+  .card {
+    background: #FFFFFF;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 2px 12px 0 rgba(124,58,237,0.07);
+    border: 1.5px solid #E5E0F0;
+  }
+  .page {
+    @apply py-6 px-4;
+  }
+  .page-header {
+    @apply flex items-center justify-between mb-6;
+  }
+  .page-header h2 {
+    @apply text-2xl font-black;
+    color: #1A1626;
+  }
+
+  /* ── Forms ───────────────────────────────────────── */
+  .input {
+    @apply w-full px-3 py-2.5 text-sm font-semibold outline-none transition;
+    background: #FFFFFF;
+    border: 1.5px solid #E5E0F0;
+    border-radius: 14px;
+    color: #1A1626;
+  }
+  .input::placeholder { color: #A099B0; font-weight: 400; }
+  .input:focus {
+    border-color: #7C3AED;
+    box-shadow: 0 0 0 3px #EDE9FE;
+  }
+  .label {
+    @apply block text-xs font-bold uppercase tracking-wide mb-1;
+    color: #6B6578;
+  }
+  .field { @apply flex flex-col gap-1; }
+
+  /* ── Buttons ─────────────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 font-bold px-5 py-2.5 text-sm transition-all;
+    background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
+    color: #ffffff;
+    border-radius: 999px;
+    border: none;
+    box-shadow: 0 2px 8px 0 rgba(124,58,237,0.30);
+  }
+  .btn-primary:hover  {
+    background: linear-gradient(135deg, #6D28D9 0%, #5B21B6 100%);
+    box-shadow: 0 4px 14px 0 rgba(124,58,237,0.40);
+    transform: translateY(-1px);
+  }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 font-bold px-5 py-2.5 text-sm transition-all;
+    background: #FFFFFF;
+    color: #6B6578;
+    border-radius: 999px;
+    border: 1.5px solid #E5E0F0;
+  }
+  .btn-ghost:hover { background: #F7F5FB; color: #1A1626; }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 font-bold px-5 py-2.5 text-sm transition-all;
+    background: #FFFFFF;
+    color: #E63946;
+    border-radius: 999px;
+    border: 1.5px solid #FDECEA;
+  }
+  .btn-danger:hover { background: #FDECEA; }
+
+  /* ── Badges ──────────────────────────────────────── */
+  .badge-red {
+    @apply inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full;
+    background: #FDECEA;
+    color: #E63946;
+  }
+  .badge-green {
+    @apply inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full;
+    background: #E6F9F0;
+    color: #2EBD7A;
+  }
+  .badge-purple {
+    @apply inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full;
+    background: #EDE9FE;
+    color: #7C3AED;
+  }
+  .badge-blue {
+    @apply inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full;
+    background: #EFF6FF;
+    color: #3B82F6;
+  }
+
+  /* ── Table ───────────────────────────────────────── */
+  .table-peteco { @apply w-full text-sm text-left border-collapse; }
+  .table-peteco thead { background: #F7F5FB; border-bottom: 1.5px solid #E5E0F0; }
+  .table-peteco th {
+    @apply px-4 py-3 text-xs font-black uppercase tracking-wider;
+    color: #6B6578;
+  }
+  .table-peteco td {
+    @apply px-4 py-3;
+    border-bottom: 1px solid #F0EBF8;
+    color: #1A1626;
+  }
+  .table-peteco tr:hover td { background: #FAF8FF; }
+
+  /* ── Divider ─────────────────────────────────────── */
+  .divider { border-top: 1.5px solid #E5E0F0; margin: 8px 0; }
+
+  /* ── Insight boxes ───────────────────────────────── */
+  .insight-info {
+    @apply rounded-2xl p-3 text-sm font-semibold flex items-start gap-2;
+    background: #EDE9FE;
+    border: 1.5px solid #C4B5FD;
+    color: #5B21B6;
+  }
+  .insight-critical {
+    @apply rounded-2xl p-3 text-sm font-semibold flex items-start gap-2;
+    background: #FDECEA;
+    border: 1.5px solid #FECACA;
+    color: #E63946;
+  }
+  .insight-warning {
+    @apply rounded-2xl p-3 text-sm font-semibold flex items-start gap-2;
+    background: #FFFBEB;
+    border: 1.5px solid #FDE68A;
+    color: #92400E;
+  }
+
+  /* ── Stat cards ──────────────────────────────────── */
+  .stat-card {
+    @apply card flex flex-col gap-2;
+  }
+  .stat-card-icon {
+    @apply w-10 h-10 rounded-xl flex items-center justify-center mb-1;
+  }
+  .stat-number { @apply text-3xl font-black; }
+  .stat-label  {
+    @apply text-xs font-black uppercase tracking-wide;
+    color: #A099B0;
+  }
+
+  /* ── Chip de categoria (estilo mobile) ───────────── */
+  .chip {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full transition-colors cursor-pointer;
+    background: #FFFFFF;
+    color: #6B6578;
+    border: 1.5px solid #E5E0F0;
+  }
+  .chip:hover, .chip-active {
+    background: #7C3AED;
+    color: #ffffff;
+    border-color: #7C3AED;
+  }
+
+  /* ── Auth pages ──────────────────────────────────── */
+  .auth-bg {
+    @apply min-h-screen flex;
+    background: #F7F5FB;
+  }
+  .auth-panel {
+    @apply hidden md:flex flex-col justify-between p-10 text-white;
+    background: linear-gradient(160deg, #7C3AED 0%, #5B21B6 60%, #4C1D95 100%);
+    width: 420px;
+    flex-shrink: 0;
+  }
+  .auth-form-area {
+    @apply flex-1 flex items-center justify-center px-6 py-10;
+  }
+}
