@@ -81,7 +81,7 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=sua_anon_key_aqui
 EXPO_PUBLIC_API_URL=http://SEU_IP_LOCAL:3001
 ```
 
-> Use o IP da sua máquina na rede local (ex: `192.168.1.10`) — não use `localhost`,  
+> Use o IP da sua máquina na rede local (ex: `192.000.0.00`) — não use `localhost`,  
 > pois o app roda no celular físico ou emulador.  
 > Para descobrir o IP: `ipconfig` no Windows → "Endereço IPv4".
 
