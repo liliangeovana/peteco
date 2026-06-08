@@ -4,3 +4,4 @@ scikit-learn
 numpy
 supabase==2.10.0
 python-dotenv
+gunicorn

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ip route *)",
+      "Bash(awk '{print $1}')"
+    ]
+  }
+}

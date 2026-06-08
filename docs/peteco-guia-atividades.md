@@ -49,7 +49,7 @@ O PETECO é uma plataforma composta por um aplicativo mobile (para tutores cadas
 - Cadastro e login de usuários
 - Cadastro de pet perdido com foto, localização GPS e CEP
 - Validação automática da foto por IA (é animal? tem conteúdo sensível?)
-- Busca de pets similares ao cadastrar (Anthropic Vision)
+- Busca de pets similares ao cadastrar (Groq Vision)
 - Feed de pets perdidos com filtros
 - Mapa com pins georreferenciados
 - Painel B2G com heatmap, clusters DBSCAN e dashboard analítico
@@ -63,9 +63,9 @@ O PETECO é uma plataforma composta por um aplicativo mobile (para tutores cadas
 **Como a aplicação contribui para o campo:**
 O PETECO utiliza IA em três camadas complementares:
 
-**1. Validação de imagem (Anthropic Vision API)** — ao fazer upload da foto do pet, a IA verifica se a imagem contém de fato um animal doméstico e se não há conteúdo sensível (ferimentos graves, conteúdo impróprio). Isso garante a integridade dos dados cadastrados e a segurança da plataforma.
+**1. Validação de imagem (Groq API (Llama 3.2 Vision))** — ao fazer upload da foto do pet, a IA verifica se a imagem contém de fato um animal doméstico e se não há conteúdo sensível (ferimentos graves, conteúdo impróprio). Isso garante a integridade dos dados cadastrados e a segurança da plataforma.
 
-**2. Recomendação de pets similares (Anthropic Vision API)** — ao cadastrar um pet perdido, a IA compara a foto e os dados textuais (espécie, raça, cor) com pets já cadastrados no sistema e retorna uma lista ordenada por similaridade (score 0-10 com justificativa). Isso evita duplicidade de cadastros e aumenta as chances de reencontro. A mesma funcionalidade aparece no detalhe de cada pet.
+**2. Recomendação de pets similares (Groq API (Llama 3.2 Vision))** — ao cadastrar um pet perdido, a IA compara a foto e os dados textuais (espécie, raça, cor) com pets já cadastrados no sistema e retorna uma lista ordenada por similaridade (score 0-10 com justificativa). Isso evita duplicidade de cadastros e aumenta as chances de reencontro. A mesma funcionalidade aparece no detalhe de cada pet.
 
 **3. Clustering geográfico (DBSCAN via Scikit-learn)** — no painel web B2G, o algoritmo DBSCAN analisa a distribuição espacial das ocorrências e identifica automaticamente agrupamentos geográficos de alto risco. Os resultados alimentam o mapa de calor, os clusters e o dashboard analítico, transformando dados brutos em informação estratégica para gestores municipais e ONGs.
 
@@ -471,7 +471,7 @@ Essa decisão é intencional: ampliar o alcance da informação sobre pets perdi
 | **Flask** | Micro-framework web Python para expor os endpoints de clustering | https://flask.palletsprojects.com |
 | **Scikit-learn** | Implementação do algoritmo DBSCAN para clustering geográfico | https://scikit-learn.org/stable/modules/clustering.html#dbscan |
 | **NumPy** | Operações matriciais para processamento das coordenadas | https://numpy.org/doc |
-| **Anthropic Vision API** | Modelo multimodal (imagem + texto) para validação de foto, detecção de conteúdo sensível e busca de pets similares | https://docs.anthropic.com/en/docs/build-with-claude/vision |
+| **Groq API (llama-3.2-11b-vision-preview)** | Modelo multimodal (imagem + texto) para validação de foto, detecção de conteúdo sensível e busca de pets similares. Free tier: 14.400 req/dia. | https://console.groq.com/docs/vision |
 
 #### CEP e Endereço
 
@@ -509,7 +509,7 @@ Conteúdo sugerido para o banner:
 
 - **Título:** PETECO — Plataforma de Monitoramento de Pets Perdidos
 - **Integrantes:** *[preencher nomes]*
-- **Tecnologias de IA:** (1) Anthropic Vision — validação de imagem e busca de pets similares · (2) DBSCAN (Scikit-learn) — clustering geográfico para identificação de zonas críticas
+- **Tecnologias de IA:** (1) Groq Vision — validação de imagem e busca de pets similares · (2) DBSCAN (Scikit-learn) — clustering geográfico para identificação de zonas críticas
 - **Problemática:** Ausência de plataforma centralizada e georreferenciada para monitoramento de animais domésticos perdidos em Boa Vista — RR
 - **Solução:** App mobile para cadastro com validação por IA + Painel web B2G com heatmaps e clustering geográfico para gestores municipais e ONGs
 
@@ -517,7 +517,8 @@ Conteúdo sugerido para o banner:
 
 > Após o deploy:
 > - **Web:** `https://peteco.vercel.app`
-> - **Backend:** `https://peteco-api.onrender.com`
+> - **Backend:** `https://peteco-production.up.railway.app`
+> - **IA:** `https://peteco-ia.up.railway.app`
 > - **QR Code:** gerar em https://qr.io com o link da aplicação web
 
 ---

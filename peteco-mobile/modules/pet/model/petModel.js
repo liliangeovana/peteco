@@ -1,6 +1,8 @@
-import * as FileSystem from 'expo-file-system/legacy';
+import { File } from 'expo-file-system/next';
 import api from '../../../shared/lib/api';
 import { supabase } from '../../../shared/lib/supabase';
+
+const authHeaders = (token) => token ? { Authorization: `Bearer ${token}` } : {};
 
 export async function listarPets(params = {}) {
   const { data } = await api.get('/pets', { params });
@@ -15,8 +17,8 @@ export async function buscarPetPorId(id) {
 export async function listarPetsDoUsuario() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Não autenticado');
-  const { data } = await api.get('/pets');
-  return data.filter(p => p.usuario_id === user.id);
+  const { data } = await api.get('/pets', { params: { usuario_id: user.id } });
+  return data;
 }
 
 export async function criarPet(payload, accessToken) {
@@ -36,13 +38,13 @@ export async function marcarEncontrado(id, accessToken) {
   return data;
 }
 
-export async function validarFoto(imagemBase64) {
-  const { data } = await api.post('/pets/validar-foto', { imagemBase64 }, { timeout: 30000 });
+export async function validarFoto(imagemBase64, accessToken) {
+  const { data } = await api.post('/pets/validar-foto', { imagemBase64 }, { timeout: 60000, headers: authHeaders(accessToken) });
   return data;
 }
 
-export async function buscarSimilares(payload) {
-  const { data } = await api.post('/pets/buscar-similares', payload);
+export async function buscarSimilares(payload, accessToken) {
+  const { data } = await api.post('/pets/buscar-similares', payload, { timeout: 60000, headers: authHeaders(accessToken) });
   return data;
 }
 
@@ -64,5 +66,11 @@ export async function uploadFoto(uri) {
 }
 
 export async function lerBase64(uri) {
-  return FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+  const file = new File(uri);
+  const bytes = await file.bytes();
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }

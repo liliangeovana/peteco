@@ -35,7 +35,7 @@
 
 O PETECO é composto por duas frentes com propósitos distintos:
 
-- **App Mobile** — voltado ao cidadão/tutor. Cadastro de pets perdidos com validação de imagem por IA (Anthropic Vision), busca de pets similares e visualização no mapa.
+- **App Mobile** — voltado ao cidadão/tutor. Cadastro de pets perdidos com validação de imagem por IA (Groq Vision), busca de pets similares e visualização no mapa.
 - **Painel Web (B2G)** — voltado a gestores municipais, agentes públicos e ONGs. Transforma os dados cadastrados no mobile em informação analítica: mapas de calor, clusters geográficos (DBSCAN) e estatísticas para tomada de decisão.
 
 | Camada | Tecnologia | Responsabilidade |
@@ -44,7 +44,7 @@ O PETECO é composto por duas frentes com propósitos distintos:
 | Painel Web B2G | Vue 3 + Vite | Mapas de calor, clusters, dashboard analítico |
 | Backend principal | Node.js + Express | API REST, sessão, cookie, CRUD, validação imagem |
 | Microsserviço IA | Python (Flask) | DBSCAN, clustering geográfico |
-| Validação de imagem | API Anthropic (visão) | Moderação, verificação de animal, busca de similares |
+| Validação de imagem | Groq API (Llama 3.2 Vision) | Moderação, verificação de animal, busca de similares |
 | Banco de Dados | Supabase | PostgreSQL + PostGIS + Auth + Storage |
 
 > **Separação de responsabilidades:** o mobile é o ponto de entrada do dado — cidadãos cadastram ocorrências. O web é o ponto de análise — gestores e ONGs consomem esses dados transformados em informação geográfica e estatística.
@@ -68,7 +68,7 @@ Arquitetura recomendada: **backend Node.js central + microsserviço Python para 
              ┌────────▼────────┐
              │  Backend Node   │
              │  Express.js     │◄──── chama microsserviço IA via HTTP
-             │  express-session│◄──── chama Anthropic Vision API
+             │  express-session│◄──── chama Groq Vision API
              └────────┬────────┘
                       │
           ┌───────────┴───────────┐
@@ -82,8 +82,8 @@ Arquitetura recomendada: **backend Node.js central + microsserviço Python para 
 └─────────────────┘
          ▲
          │
-Anthropic Vision API
-(validação + similares)
+Groq Vision API
+(Llama 3.2 — validação + similares)
 ```
 
 ---
@@ -106,10 +106,10 @@ Anthropic Vision API
 | Queries banco | @supabase/supabase-js | Cliente oficial — substitui um ORM inteiro. |
 | Microsserviço IA | Flask (Python) | Mais leve que FastAPI para serviço pequeno. |
 | IA / Clustering | Scikit-learn (DBSCAN) | Biblioteca padrão acadêmica. Paper original 1996. |
-| Validação de imagem | Anthropic Vision API | Moderação de conteúdo e verificação de animal no upload. Tier gratuito suficiente para protótipo. |
+| Validação de imagem | Groq API (llama-3.2-11b-vision-preview) | Moderação de conteúdo e verificação de animal no upload. Free tier: 14.400 req/dia. |
 | Banco de Dados | Supabase | PostgreSQL + Auth + Storage + API automática. |
-| Deploy Backend | Render.com | Free tier Node.js. Deploy via GitHub. |
-| Deploy IA | Render.com | Segundo Web Service Python. |
+| Deploy Backend | Railway | Deploy via CLI (`railway up`). URL pública automática. |
+| Deploy IA | Railway | Segundo serviço no mesmo projeto Railway. |
 | Deploy Web | Vercel | Deploy instantâneo de Vue. Domínio grátis. |
 | Deploy Mobile | Expo Go | QR code para a defesa. Sem publicar na loja. |
 
@@ -121,7 +121,7 @@ Anthropic Vision API
 |-------------------------------|-------------------------------------|
 | App React Native Expo (10 telas) | Dashboard Vue 3 + Vite + Tailwind (10 telas) |
 | Telas de cadastro, câmera, GPS | Mapa, heatmap, clusters, dashboard |
-| Upload de foto + validação Anthropic Vision | Microsserviço Python DBSCAN |
+| Upload de foto + validação Groq Vision | Microsserviço Python DBSCAN |
 | API Express (pets CRUD + validar-foto) | Gráficos Chart.js |
 | express-session + cookie no Node | Tela de perfil + editar perfil |
 | Integração Supabase Auth | Tabela HTML de pets + formulários |
@@ -161,7 +161,7 @@ Anthropic Vision API
 | 4 | Consulta de API via Fetch | 1 | Axios para Node API em todas as páginas |
 | 5 | Gerenciamento HTTP (rotas, redirect, render) | 2 | Express com rotas, `res.redirect`, `res.sendFile` |
 | 6 | Cookie/Sessão | 2 | **express-session** — ver seção 13 |
-| 7 | Funcionalidades com IA | 2 | DBSCAN (clustering geográfico) + Anthropic Vision (validação de imagem) |
+| 7 | Funcionalidades com IA | 2 | DBSCAN (clustering geográfico) + Groq Vision (validação de imagem) |
 | 8 | 10 telas | 5 | Ver lista completa na seção 10 |
 | 9 | Apresentação estruturada | 10 | Roteiro na seção 15 (Fluxos) |
 | **Total** | | **25** | |
@@ -268,7 +268,7 @@ ORDER  BY distancia_metros;
 ```bash
 mkdir peteco-backend && cd peteco-backend
 npm init -y
-npm install express @supabase/supabase-js dotenv cors axios
+npm install express @supabase/supabase-js dotenv cors axios groq-sdk
 npm install express-session cookie-parser
 npm install -D nodemon
 ```
@@ -289,8 +289,19 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
-app.use(express.json());
+const allowedOrigins = [
+  process.env.FRONTEND_URL || 'http://localhost:5173',
+  'http://localhost:8081',
+  'http://localhost:19006',
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error('CORS: origem não permitida'));
+  },
+  credentials: true,
+}));
+app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
 // Sessão com cookie — atende ao item 6 do DAW
@@ -312,7 +323,8 @@ app.use('/analise', analiseRouter);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-app.listen(3000, () => console.log('PETECO API rodando na porta 3000'));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => console.log(`PETECO API rodando na porta ${PORT}`));
 ```
 
 ### src/routes/auth.js — login com sessão
@@ -368,26 +380,56 @@ router.get('/me', (req, res) => {
 export default router;
 ```
 
-### src/middlewares/auth.js — protege rotas com sessão
+### src/middlewares/auth.js — protege rotas (sessão web + Bearer JWT mobile)
 
 ```javascript
-// Middleware que verifica se existe sessão ativa
-export function autenticar(req, res, next) {
-  if (!req.session.usuario) {
-    return res.status(401).json({ erro: 'Sessão inativa. Faça login.' });
+import { supabase } from '../lib/supabase.js';
+
+export async function autenticar(req, res, next) {
+  // sessão cookie (web)
+  if (req.session?.usuario) {
+    req.usuario = req.session.usuario;
+    return next();
   }
-  next();
+
+  // Bearer JWT (mobile) — stateless
+  const auth = req.headers.authorization;
+  if (auth?.startsWith('Bearer ')) {
+    const token = auth.slice(7);
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (!error && user) {
+      req.usuario = user;
+      return next();
+    }
+  }
+
+  return res.status(401).json({ erro: 'Sessão inativa. Faça login.' });
 }
 ```
 
-### src/routes/pets.js — CRUD de pets
+### src/routes/pets.js — CRUD de pets + validação por Groq Vision
 
 ```javascript
 import { Router } from 'express';
+import Groq from 'groq-sdk';
 import { supabase } from '../lib/supabase.js';
 import { autenticar } from '../middlewares/auth.js';
 
 const router = Router();
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const VISION_MODEL = 'llama-3.2-11b-vision-preview';
+
+function toDataUrl(imagemBase64) {
+  if (imagemBase64.startsWith('data:')) return imagemBase64;
+  return `data:image/jpeg;base64,${imagemBase64}`;
+}
+
+function comTimeout(promise, ms, mensagem) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(mensagem)), ms)),
+  ]);
+}
 
 // GET /pets — lista pets com filtros opcionais
 router.get('/', async (req, res) => {
@@ -510,7 +552,13 @@ export default router;
 
 ```bash
 mkdir peteco-ia && cd peteco-ia
-pip install flask scikit-learn numpy supabase python-dotenv
+pip install flask flask-cors scikit-learn numpy supabase python-dotenv gunicorn
+```
+
+### Procfile (necessário para deploy no Railway)
+
+```
+web: gunicorn app:app --bind 0.0.0.0:$PORT
 ```
 
 ### app.py
@@ -1077,13 +1125,13 @@ O PETECO utiliza IA em três camadas distintas, cada uma com propósito e tecnol
 
 | Camada | Onde | Tecnologia | Finalidade |
 |--------|------|-----------|------------|
-| **Validação de imagem** | Mobile + Backend | Anthropic Vision | Verifica se é animal, detecta conteúdo sensível |
-| **Recomendação de similares** | Mobile + Web | Anthropic Vision | Compara fotos e dados para identificar o mesmo pet |
+| **Validação de imagem** | Mobile + Backend | Groq Vision (Llama 3.2) | Verifica se é animal, detecta conteúdo sensível |
+| **Recomendação de similares** | Mobile + Web | Groq Vision (Llama 3.2) | Compara fotos e dados para identificar o mesmo pet |
 | **Clustering geográfico** | Painel Web B2G | Python + DBSCAN | Identifica zonas críticas de desaparecimento |
 
 ---
 
-## 12.1 Validação e Similares — Anthropic Vision API
+## 12.1 Validação e Similares — Groq Vision API (Llama 3.2)
 
 ### Endpoint POST /pets/validar-foto
 
@@ -1606,7 +1654,7 @@ peteco/
 │   │   │   ├── NavBar.vue
 │   │   │   ├── FooterSite.vue
 │   │   │   ├── CamadaHeatmap.vue
-│   │   │   └── CartaoSimilar.vue   # Pets similares (Anthropic Vision)
+│   │   │   └── CartaoSimilar.vue   # Pets similares (Groq Vision)
 │   │   ├── composables/
 │   │   │   ├── useAuth.js
 │   │   │   └── useCep.js       # Busca de endereço por CEP
@@ -1690,32 +1738,75 @@ peteco/
 | Plataforma | Para | Observação | Custo |
 |-----------|------|-----------|-------|
 | **Vercel** | Dashboard Vue | Detecta Vite automaticamente. | Grátis |
-| **Render.com** | Backend Node | Web Service Node.js. Deploy via GitHub. | Grátis |
-| **Render.com** | Microsserviço IA | Segundo Web Service Python. | Grátis |
+| **Railway** | Backend Node | Deploy via CLI (`railway up`). URL pública automática. | Grátis* |
+| **Railway** | Microsserviço IA | Segundo serviço no mesmo projeto Railway. | Grátis* |
 | **Supabase** | Banco de dados | 500MB banco, 1GB storage, 50k usuários. | Grátis |
 | **Expo Go** | App Mobile | QR code para a defesa, sem publicar na loja. | Grátis |
+
+*Railway free tier: $5 de crédito/mês, suficiente para protótipo acadêmico.
+
+### Deploy no Railway (passo a passo)
+
+```bash
+# Instalar CLI
+npm install -g @railway/cli
+
+# Backend Node
+cd peteco-api
+railway login
+railway init        # cria projeto
+railway up          # faz deploy
+
+# Variáveis de ambiente (rodar uma por vez)
+railway variables set SUPABASE_URL="https://xxxx.supabase.co"
+railway variables set SUPABASE_SERVICE_KEY="service_role_key_aqui"
+railway variables set SESSION_SECRET="string-secreta-longa"
+railway variables set GEMINI_API_KEY="sua_chave"           # não usado — mantido por compatibilidade
+railway variables set GROQ_API_KEY="sua_chave_groq"
+railway variables set IA_SERVICE_KEY="chave_ia"
+railway variables set IA_SERVICE_URL="https://peteco-ia.up.railway.app"
+railway variables set FRONTEND_URL="https://peteco.vercel.app"
+
+# Microsserviço IA Python
+cd ../peteco-ia
+railway link        # vincula ao mesmo projeto
+railway service create peteco-ia
+railway up
+railway variables set SUPABASE_URL="https://xxxx.supabase.co"
+railway variables set SUPABASE_SERVICE_KEY="service_role_key_aqui"
+railway variables set IA_SERVICE_KEY="chave_ia"
+```
 
 ### Variáveis de ambiente
 
 ```bash
-# peteco-backend/.env
+# peteco-api/.env (local)
 SUPABASE_URL=https://xxxx.supabase.co
 SUPABASE_SERVICE_KEY=service_role_key_aqui
-IA_SERVICE_URL=https://peteco-ia.onrender.com
+IA_SERVICE_URL=https://peteco-ia.up.railway.app
 SESSION_SECRET=uma-string-secreta-longa-aqui
 FRONTEND_URL=https://peteco.vercel.app
+GROQ_API_KEY=sua_chave_groq_aqui
+IA_SERVICE_KEY=chave_compartilhada
+PORT=3001
 
-# peteco-ia/.env
+# peteco-ia/.env (local)
 SUPABASE_URL=https://xxxx.supabase.co
 SUPABASE_SERVICE_KEY=service_role_key_aqui
+IA_SERVICE_KEY=chave_compartilhada
+
+# peteco-mobile/.env
+EXPO_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=anon_key_aqui
+EXPO_PUBLIC_API_URL=https://peteco-production.up.railway.app
 
 # peteco-web/.env
 VITE_SUPABASE_URL=https://xxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=anon_key_aqui
-VITE_API_URL=https://peteco-backend.onrender.com
+VITE_API_URL=https://peteco-production.up.railway.app
 ```
 
-> **Atenção:** O Render.com free tier "dorme" após 15 minutos sem requisições. Antes da defesa, acorde **os dois serviços** (Node e Python) com uma requisição antecipada. Cada um leva ~30s na primeira resposta.
+> **Atenção:** O Railway não sobe o arquivo `.env` automaticamente — as variáveis devem ser configuradas pelo CLI ou pelo painel web do Railway antes do primeiro deploy.
 
 **Custo total de infraestrutura: R$ 0,00.**
 
@@ -1748,8 +1839,8 @@ VITE_API_URL=https://peteco-backend.onrender.com
 - [ ] Endpoint `/analise` no Node chamando o Flask (2h)
 - [ ] Visualização de clusters no mapa Vue (3h)
 - [ ] Tela `/analise` com estatísticas numéricas B2G (2h)
-- [ ] Endpoint `/pets/validar-foto` com Anthropic Vision (3h)
-- [ ] Endpoint `/pets/buscar-similares` com Anthropic Vision (3h)
+- [ ] Endpoint `/pets/validar-foto` com Groq Vision (3h)
+- [ ] Endpoint `/pets/buscar-similares` com Groq Vision (3h)
 - [ ] Tela de lista de pets com tabela HTML + filtros (2h)
 - [ ] Tela de perfil + editar perfil com formulário e sessão (2h)
 - [ ] Gráficos Chart.js no dashboard (2h)

@@ -2,27 +2,61 @@ import { useState } from 'react';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import { buscarCep } from '../../../shared/hooks/useCep';
+import { BAIRROS_BOA_VISTA, OPCAO_OUTRO, bairroMaisProximo } from '../../../constants/bairros';
+import { SEM_RACA } from '../../../constants/racas';
 import { validarFoto, buscarSimilares, criarPet, uploadFoto, lerBase64 } from '../model/petModel';
 import { obterSessao } from '../../auth/model/authModel';
+
+function ddmmAAAA_para_iso(data) {
+  if (!data || data.length < 10) return data || null;
+  const [dd, mm, aaaa] = data.split('/');
+  if (!dd || !mm || !aaaa || aaaa.length < 4) return null;
+  return `${aaaa}-${mm}-${dd}`;
+}
 
 export default function useCadastrarController(onSuccess) {
   const [form, setForm] = useState({
     nome: '', especie: 'cachorro', raca: '', cor: '',
-    descricao: '', data_perda: '', cep: '',
-    endereco: '', bairro: '', cidade: '',
+    descricao: '', data_perda: '',
   });
-  const [foto, setFoto]                   = useState(null);
-  const [coords, setCoords]               = useState(null);
-  const [buscandoCep, setBuscandoCep]     = useState(false);
-  const [buscandoGps, setBuscandoGps]     = useState(false);
-  const [enviando, setEnviando]           = useState(false);
-  const [validandoFoto, setValidandoFoto] = useState(false);
-  const [fotoValidada, setFotoValidada]   = useState(false);
+  const [bairroSelecionado, setBairroSelecionado] = useState('');
+  const [bairroOutro, setBairroOutro]             = useState('');
+  const [racaSelecionada, setRacaSelecionada]     = useState('');
+  const [foto, setFoto]                           = useState(null);
+  const [fotoBase64, setFotoBase64]               = useState(null);
+  const [coords, setCoords]                       = useState(null);
+  const [buscandoGps, setBuscandoGps]             = useState(false);
+  const [enviando, setEnviando]                   = useState(false);
+  const [validandoFoto, setValidandoFoto]         = useState(false);
+  const [fotoValidada, setFotoValidada]           = useState(false);
 
   const set = (campo, valor) => setForm(f => ({ ...f, [campo]: valor }));
 
-  // Selecionar foto da galeria
+  const selecionarRaca = (raca) => {
+    setRacaSelecionada(raca);
+    set('raca', raca === SEM_RACA ? '' : raca);
+  };
+
+  const selecionarEspecie = (especie) => {
+    set('especie', especie);
+    setRacaSelecionada('');
+    set('raca', '');
+  };
+
+  const resetFoto = () => {
+    setFoto(null);
+    setFotoBase64(null);
+    setFotoValidada(false);
+  };
+
+  const handleDataPerda = (texto) => {
+    const nums = texto.replace(/\D/g, '').slice(0, 8);
+    let formatado = nums;
+    if (nums.length > 4) formatado = `${nums.slice(0,2)}/${nums.slice(2,4)}/${nums.slice(4)}`;
+    else if (nums.length > 2) formatado = `${nums.slice(0,2)}/${nums.slice(2)}`;
+    set('data_perda', formatado);
+  };
+
   const selecionarFoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -30,22 +64,25 @@ export default function useCadastrarController(onSuccess) {
       return;
     }
     const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.3,
+      maxWidth: 800,
+      maxHeight: 600,
     });
     if (res.canceled) return;
 
     const uri = res.assets[0].uri;
+    resetFoto();
     setFoto(uri);
-    setFotoValidada(false);
     setValidandoFoto(true);
     try {
-      const base64 = await lerBase64(uri);
-      const resultado = await validarFoto(base64);
+      const [base64, session] = await Promise.all([lerBase64(uri), obterSessao()]);
+      setFotoBase64(base64);
+      const resultado = await validarFoto(base64, session?.access_token);
       if (!resultado.data.aprovada) {
-        setFoto(null);
+        resetFoto();
         Alert.alert(
           'Foto não aprovada',
           resultado.data.motivo || 'A imagem não parece ser de um animal doméstico.',
@@ -54,8 +91,7 @@ export default function useCadastrarController(onSuccess) {
         setFotoValidada(true);
       }
     } catch (err) {
-      setFoto(null);
-      setFotoValidada(false);
+      resetFoto();
       const detalhe = err?.response?.data?.erro || err?.message || 'Erro desconhecido';
       Alert.alert('Erro na validação', detalhe);
     } finally {
@@ -63,7 +99,6 @@ export default function useCadastrarController(onSuccess) {
     }
   };
 
-  // Obter localização via GPS
   const obterGps = async () => {
     setBuscandoGps(true);
     try {
@@ -73,8 +108,13 @@ export default function useCadastrarController(onSuccess) {
         return;
       }
       const local = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      setCoords({ latitude: local.coords.latitude, longitude: local.coords.longitude });
-      Alert.alert('GPS capturado! 📍', `${local.coords.latitude.toFixed(4)}, ${local.coords.longitude.toFixed(4)}`);
+      const { latitude, longitude } = local.coords;
+      setCoords({ latitude, longitude });
+
+      const bairro = bairroMaisProximo(latitude, longitude);
+      setBairroSelecionado(bairro.nome);
+      setBairroOutro('');
+      Alert.alert('Localização capturada', `Bairro identificado: ${bairro.nome}`);
     } catch {
       Alert.alert('Erro', 'Não foi possível obter a localização');
     } finally {
@@ -82,37 +122,18 @@ export default function useCadastrarController(onSuccess) {
     }
   };
 
-  // Formatar e buscar endereço pelo CEP
-  const handleCep = async (texto) => {
-    const nums = texto.replace(/\D/g, '').slice(0, 8);
-    const formatado = nums.length > 5 ? `${nums.slice(0, 5)}-${nums.slice(5)}` : nums;
-    set('cep', formatado);
-    if (nums.length === 8) {
-      setBuscandoCep(true);
-      try {
-        const end = await buscarCep(nums);
-        set('bairro', end.bairro);
-        set('cidade', end.cidade);
-      } catch (err) {
-        Alert.alert('CEP não encontrado', err.message);
-      } finally {
-        setBuscandoCep(false);
-      }
-    }
-  };
-
-  // Verificar pets similares usando IA antes de enviar
   const verificarSimilares = async () => {
-    if (!foto || !fotoValidada) return true;
+    if (!foto || !fotoValidada || !fotoBase64) return true;
     try {
-      const base64 = await lerBase64(foto);
+      const session = await obterSessao();
+      const bairroFinal = bairroSelecionado === OPCAO_OUTRO ? bairroOutro : bairroSelecionado;
       const res = await buscarSimilares({
-        imagemBase64: base64,
+        imagemBase64: fotoBase64,
         especie: form.especie,
         cor: form.cor,
         raca: form.raca,
-        cidade: form.cidade,
-      });
+        cidade: 'Boa Vista',
+      }, session?.access_token);
       if (res.data?.length > 0) {
         const nomes = res.data.map(s => `• ${s.pet.nome} (${s.justificativa})`).join('\n');
         return await new Promise(resolve => {
@@ -126,16 +147,20 @@ export default function useCadastrarController(onSuccess) {
           );
         });
       }
-    } catch {
-      // silencia erros de IA — não bloqueia o cadastro
+    } catch (err) {
+      console.warn('[verificarSimilares]', err?.message);
     }
     return true;
   };
 
-  // Enviar dados para criar o pet
   const enviar = async () => {
     if (!form.nome || !form.especie) {
       Alert.alert('Preencha pelo menos o nome e a espécie');
+      return;
+    }
+    const bairroFinal = bairroSelecionado === OPCAO_OUTRO ? bairroOutro.trim() : bairroSelecionado;
+    if (!bairroFinal) {
+      Alert.alert('Selecione o bairro onde o pet foi visto');
       return;
     }
     if (foto && !fotoValidada) {
@@ -151,8 +176,19 @@ export default function useCadastrarController(onSuccess) {
       let foto_url = null;
       if (foto) foto_url = await uploadFoto(foto);
 
+      const latBairro = coords?.latitude  ?? BAIRROS_BOA_VISTA.find(b => b.nome === bairroSelecionado)?.lat;
+      const lngBairro = coords?.longitude ?? BAIRROS_BOA_VISTA.find(b => b.nome === bairroSelecionado)?.lng;
+
       await criarPet(
-        { ...form, foto_url, latitude: coords?.latitude, longitude: coords?.longitude },
+        {
+          ...form,
+          data_perda: ddmmAAAA_para_iso(form.data_perda),
+          bairro: bairroFinal,
+          cidade: 'Boa Vista',
+          foto_url,
+          latitude: latBairro,
+          longitude: lngBairro,
+        },
         session?.access_token,
       );
 
@@ -171,14 +207,20 @@ export default function useCadastrarController(onSuccess) {
     set,
     foto,
     coords,
-    buscandoCep,
+    bairroSelecionado,
+    bairroOutro,
+    setBairroSelecionado,
+    setBairroOutro,
+    racaSelecionada,
+    selecionarRaca,
+    selecionarEspecie,
     buscandoGps,
     enviando,
     validandoFoto,
     fotoValidada,
     selecionarFoto,
     obterGps,
-    handleCep,
+    handleDataPerda,
     enviar,
   };
 }

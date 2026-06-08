@@ -1,21 +1,30 @@
+import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, ActivityIndicator, Image,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Modal, FlatList,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, radius, font, shadow } from '../../constants/theme';
+import { BAIRROS_BOA_VISTA, OPCAO_OUTRO } from '../../constants/bairros';
+import { RACAS } from '../../constants/racas';
 import useCadastrarController from '../../modules/pet/controller/useCadastrarController';
 
 const ESPECIES = ['cachorro', 'gato', 'outro'];
+const OPCOES_BAIRRO = [...BAIRROS_BOA_VISTA.map(b => b.nome), OPCAO_OUTRO];
 
 export default function CadastrarPet() {
   const router = useRouter();
+  const [modalBairro, setModalBairro] = useState(false);
+  const [modalRaca, setModalRaca]     = useState(false);
+
   const {
     form, set, foto, coords,
-    buscandoCep, buscandoGps, enviando, validandoFoto, fotoValidada,
-    selecionarFoto, obterGps, handleCep, enviar,
+    bairroSelecionado, bairroOutro, setBairroSelecionado, setBairroOutro,
+    racaSelecionada, selecionarRaca, selecionarEspecie,
+    buscandoGps, enviando, validandoFoto, fotoValidada,
+    selecionarFoto, obterGps, handleDataPerda, enviar,
   } = useCadastrarController(() => router.replace('/(tabs)/feed'));
 
   return (
@@ -88,7 +97,7 @@ export default function CadastrarPet() {
                 <TouchableOpacity
                   key={e}
                   style={[s.especieChip, ativo && s.especieChipAtivo]}
-                  onPress={() => set('especie', e)}
+                  onPress={() => selecionarEspecie(e)}
                 >
                   {e === 'cachorro' ? <MaterialCommunityIcons name="dog" size={16} color={cor} />
                   : e === 'gato'    ? <MaterialCommunityIcons name="cat" size={16} color={cor} />
@@ -100,21 +109,30 @@ export default function CadastrarPet() {
           </View>
         </View>
 
-        {[
-          { campo: 'raca', label: 'Raça', placeholder: 'Ex: Vira-lata' },
-          { campo: 'cor',  label: 'Cor',  placeholder: 'Ex: Caramelo e branco' },
-        ].map(({ campo, label, placeholder }) => (
-          <View key={campo} style={s.campo}>
-            <Text style={s.label}>{label}</Text>
-            <TextInput
-              style={s.input}
-              value={form[campo]}
-              onChangeText={v => set(campo, v)}
-              placeholder={placeholder}
-              placeholderTextColor={colors.textLight}
-            />
-          </View>
-        ))}
+        <View style={s.campo}>
+          <Text style={s.label}>Raça</Text>
+          <TouchableOpacity
+            style={[s.input, s.selectBtn]}
+            onPress={() => setModalRaca(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={racaSelecionada ? s.selectTexto : s.selectPlaceholder}>
+              {racaSelecionada || 'Selecione a raça'}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color={colors.textLight} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={s.campo}>
+          <Text style={s.label}>Cor</Text>
+          <TextInput
+            style={s.input}
+            value={form.cor}
+            onChangeText={v => set('cor', v)}
+            placeholder="Ex: Caramelo e branco"
+            placeholderTextColor={colors.textLight}
+          />
+        </View>
 
         <View style={s.campo}>
           <Text style={s.label}>Descrição</Text>
@@ -134,9 +152,11 @@ export default function CadastrarPet() {
           <TextInput
             style={s.input}
             value={form.data_perda}
-            onChangeText={v => set('data_perda', v)}
-            placeholder="AAAA-MM-DD"
+            onChangeText={handleDataPerda}
+            placeholder="DD/MM/AAAA"
             placeholderTextColor={colors.textLight}
+            keyboardType="numeric"
+            maxLength={10}
           />
         </View>
       </View>
@@ -145,32 +165,36 @@ export default function CadastrarPet() {
       <View style={s.secao}>
         <Text style={s.secaoTitulo}>Localização</Text>
 
+        {/* Select de bairro */}
         <View style={s.campo}>
-          <Text style={s.label}>CEP</Text>
-          <View style={s.linha}>
-            <TextInput
-              style={[s.input, { flex: 1 }]}
-              value={form.cep}
-              onChangeText={handleCep}
-              placeholder="00000-000"
-              placeholderTextColor={colors.textLight}
-              keyboardType="numeric"
-              maxLength={9}
-            />
-            {buscandoCep && <ActivityIndicator color={colors.primary} style={{ marginLeft: 10 }} />}
-          </View>
+          <Text style={s.label}>Bairro *</Text>
+          <TouchableOpacity
+            style={[s.input, s.selectBtn]}
+            onPress={() => setModalBairro(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={bairroSelecionado ? s.selectTexto : s.selectPlaceholder}>
+              {bairroSelecionado || 'Selecione o bairro'}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color={colors.textLight} />
+          </TouchableOpacity>
         </View>
 
-        {form.bairro ? (
-          <View style={s.enderecoResultado}>
-            <Ionicons name="location-outline" size={22} color={colors.primary} />
-            <View>
-              <Text style={s.enderecoTexto}>{form.bairro}</Text>
-              <Text style={s.enderecoSub}>{form.cidade}</Text>
-            </View>
+        {/* Input livre quando "Outro" */}
+        {bairroSelecionado === OPCAO_OUTRO && (
+          <View style={s.campo}>
+            <Text style={s.label}>Qual bairro?</Text>
+            <TextInput
+              style={s.input}
+              value={bairroOutro}
+              onChangeText={setBairroOutro}
+              placeholder="Digite o nome do bairro"
+              placeholderTextColor={colors.textLight}
+            />
           </View>
-        ) : null}
+        )}
 
+        {/* Botão GPS */}
         <TouchableOpacity style={s.btnGps} onPress={obterGps} disabled={buscandoGps} activeOpacity={0.85}>
           {buscandoGps
             ? <ActivityIndicator color={colors.primary} />
@@ -181,11 +205,16 @@ export default function CadastrarPet() {
                   color={colors.primary}
                 />
                 <Text style={s.btnGpsTexto}>
-                  {coords ? 'GPS capturado — tocar para atualizar' : 'Capturar GPS automaticamente'}
+                  {coords ? 'GPS capturado — tocar para atualizar' : 'Capturar localização por GPS'}
                 </Text>
               </>
           }
         </TouchableOpacity>
+        {coords && (
+          <Text style={s.gpsHint}>
+            Posição exata registrada — usada para o mapa
+          </Text>
+        )}
       </View>
 
       {/* Botão enviar */}
@@ -203,6 +232,85 @@ export default function CadastrarPet() {
 
       <View style={{ height: 40 }} />
     </ScrollView>
+
+    {/* Modal select de bairros */}
+    <Modal
+      visible={modalBairro}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setModalBairro(false)}
+    >
+      <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setModalBairro(false)} />
+      <View style={s.modalSheet}>
+        <View style={s.modalHeader}>
+          <Text style={s.modalTitulo}>Selecione o bairro</Text>
+          <TouchableOpacity onPress={() => setModalBairro(false)}>
+            <Ionicons name="close" size={22} color={colors.textMid} />
+          </TouchableOpacity>
+        </View>
+        <FlatList
+          data={OPCOES_BAIRRO}
+          keyExtractor={item => item}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[s.modalItem, bairroSelecionado === item && s.modalItemAtivo]}
+              onPress={() => {
+                setBairroSelecionado(item);
+                if (item !== OPCAO_OUTRO) setBairroOutro('');
+                setModalBairro(false);
+              }}
+            >
+              <Text style={[s.modalItemTexto, bairroSelecionado === item && s.modalItemTextoAtivo]}>
+                {item}
+              </Text>
+              {bairroSelecionado === item && (
+                <Ionicons name="checkmark" size={18} color={colors.primary} />
+              )}
+            </TouchableOpacity>
+          )}
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
+    </Modal>
+
+    {/* Modal select de raça */}
+    <Modal
+      visible={modalRaca}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setModalRaca(false)}
+    >
+      <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setModalRaca(false)} />
+      <View style={s.modalSheet}>
+        <View style={s.modalHeader}>
+          <Text style={s.modalTitulo}>Selecione a raça</Text>
+          <TouchableOpacity onPress={() => setModalRaca(false)}>
+            <Ionicons name="close" size={22} color={colors.textMid} />
+          </TouchableOpacity>
+        </View>
+        <FlatList
+          data={RACAS[form.especie] ?? RACAS.outro}
+          keyExtractor={item => item}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[s.modalItem, racaSelecionada === item && s.modalItemAtivo]}
+              onPress={() => {
+                selecionarRaca(item);
+                setModalRaca(false);
+              }}
+            >
+              <Text style={[s.modalItemTexto, racaSelecionada === item && s.modalItemTextoAtivo]}>
+                {item}
+              </Text>
+              {racaSelecionada === item && (
+                <Ionicons name="checkmark" size={18} color={colors.primary} />
+              )}
+            </TouchableOpacity>
+          )}
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
+    </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -318,9 +426,18 @@ const s = StyleSheet.create({
     textAlignVertical: 'top',
     paddingTop: 10,
   },
-  linha: {
+  selectBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  selectTexto: {
+    fontSize: 14,
+    color: colors.textDark,
+  },
+  selectPlaceholder: {
+    fontSize: 14,
+    color: colors.textLight,
   },
   especieRow: {
     flexDirection: 'row',
@@ -351,23 +468,6 @@ const s = StyleSheet.create({
     color: '#fff',
     ...font.bold,
   },
-  enderecoResultado: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.md,
-    padding: 12,
-  },
-  enderecoTexto: {
-    fontSize: 14,
-    color: colors.textDark,
-    ...font.bold,
-  },
-  enderecoSub: {
-    fontSize: 12,
-    color: colors.primary,
-  },
   btnGps: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -383,6 +483,12 @@ const s = StyleSheet.create({
     color: colors.primary,
     ...font.medium,
     flex: 1,
+  },
+  gpsHint: {
+    fontSize: 11,
+    color: colors.textLight,
+    textAlign: 'center',
+    marginTop: -4,
   },
   btnEnviar: {
     flexDirection: 'row',
@@ -401,6 +507,50 @@ const s = StyleSheet.create({
   btnEnviarTexto: {
     color: '#fff',
     fontSize: 16,
+    ...font.bold,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  modalSheet: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    maxHeight: '70%',
+    paddingBottom: 32,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitulo: {
+    fontSize: 16,
+    ...font.black,
+    color: colors.textDark,
+  },
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalItemAtivo: {
+    backgroundColor: colors.primaryLight,
+  },
+  modalItemTexto: {
+    fontSize: 14,
+    color: colors.textDark,
+  },
+  modalItemTextoAtivo: {
+    color: colors.primary,
     ...font.bold,
   },
 });

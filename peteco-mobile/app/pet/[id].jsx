@@ -7,6 +7,12 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, radius, font, shadow } from '../../constants/theme';
 import useDetalhePetController from '../../modules/pet/controller/useDetalhePetController';
 
+function isoParaPtBR(iso) {
+  if (!iso) return '—';
+  const [a, m, d] = iso.split('T')[0].split('-');
+  return `${d}/${m}/${a}`;
+}
+
 export default function DetalhePet() {
   const { id }   = useLocalSearchParams();
   const router   = useRouter();
@@ -75,10 +81,7 @@ export default function DetalhePet() {
               { icon: 'color-palette-outline',  label: 'Cor',    valor: pet.cor    || '—' },
               { icon: 'location-outline',       label: 'Bairro', valor: pet.bairro || '—' },
               { icon: 'business-outline',       label: 'Cidade', valor: pet.cidade || '—' },
-              { icon: 'calendar-outline',       label: 'Perdido em',
-                valor: pet.data_perda
-                  ? new Date(pet.data_perda).toLocaleDateString('pt-BR')
-                  : '—' },
+              { icon: 'calendar-outline', label: 'Perdido em', valor: isoParaPtBR(pet.data_perda) },
             ].map(({ icon, label, valor }) => (
               <View key={label} style={s.infoCard}>
                 <Ionicons name={icon} size={18} color={colors.primary} style={{ marginBottom: 4 }} />

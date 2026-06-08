@@ -10,7 +10,7 @@ def gerar_estatisticas(supabase_client):
 
     por_especie = [
         {'especie': k, 'total': v}
-        for k, v in Counter(p['especie'] for p in pets).most_common()
+        for k, v in Counter(p['especie'] for p in pets if p['status'] == 'perdido').most_common()
     ]
 
     return {

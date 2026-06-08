@@ -3,6 +3,12 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, radius, shadow, font } from '../../../constants/theme';
 
+function isoParaPtBR(iso) {
+  if (!iso) return null;
+  const [a, m, d] = iso.split('T')[0].split('-');
+  return `${d}/${m}/${a}`;
+}
+
 function EspecieIcon({ especie, size = 32, color }) {
   const cor = color ?? colors.primary;
   if (especie === 'cachorro') return <MaterialCommunityIcons name="dog" size={size} color={cor} />;
@@ -45,7 +51,7 @@ export default function CardPet({ pet }) {
           <Ionicons name="location-outline" size={11} color={colors.textLight} />
           <Text style={s.local} numberOfLines={1}>{pet.bairro || pet.cidade || 'Local não informado'}</Text>
           {pet.data_perda && (
-            <Text style={s.data}>{new Date(pet.data_perda).toLocaleDateString('pt-BR')}</Text>
+            <Text style={s.data}>{isoParaPtBR(pet.data_perda)}</Text>
           )}
         </View>
       </View>

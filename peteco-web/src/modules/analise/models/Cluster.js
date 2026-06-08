@@ -12,5 +12,6 @@
  *   total_clusters: number,
  *   total_ruido:    number,
  *   clusters:       Cluster[],
+ *   parametros:     { eps_km: number, min_samples: number },
  * }} ResultadoClusters
  */

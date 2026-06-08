@@ -68,29 +68,26 @@ router.patch('/perfil', async (req, res) => {
   }
   try {
     const { nome, telefone, senha } = req.body;
-    const updates = {};
-
-    if (nome || telefone) {
-      updates.data = {};
-      if (nome) updates.data.nome = nome;
-      if (telefone) updates.data.telefone = telefone;
-    }
-    if (senha) updates.password = senha;
+    const meta = {
+      ...(nome && { nome }),
+      ...(telefone && { telefone }),
+    };
+    const updates = {
+      ...(Object.keys(meta).length > 0 && { data: meta }),
+      ...(senha && { password: senha }),
+    };
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ erro: 'Nenhum campo para atualizar' });
     }
 
-    const { data, error } = await supabase.auth.admin.updateUserById(
+    const { error } = await supabase.auth.admin.updateUserById(
       req.session.usuario.id,
       updates
     );
     if (error) return res.status(400).json({ erro: error.message });
 
-    req.session.usuario = {
-      ...req.session.usuario,
-      nome: data.user.user_metadata?.nome ?? req.session.usuario.nome,
-    };
+    if (nome) req.session.usuario.nome = nome;
 
     res.json({ mensagem: 'Perfil atualizado', usuario: req.session.usuario });
   } catch (err) {

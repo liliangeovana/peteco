@@ -1,28 +1,43 @@
 import { Router } from 'express';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 import { supabase } from '../lib/supabase.js';
 import { autenticar } from '../middlewares/auth.js';
 
 const router = Router();
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const MODEL_OPTIONS = { apiVersion: 'v1' };
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
-function toBase64(imagemBase64) {
-  return imagemBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+function toDataUrl(imagemBase64) {
+  if (imagemBase64.startsWith('data:')) return imagemBase64;
+  return `data:image/jpeg;base64,${imagemBase64}`;
+}
+
+function comTimeout(promise, ms, mensagem) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(mensagem)), ms)),
+  ]);
+}
+
+function parseGroqJson(resposta) {
+  return JSON.parse(
+    resposta.choices[0].message.content.trim().replace(/```json|```/g, '').trim()
+  );
 }
 
 // GET /pets — lista pets com filtros opcionais
 router.get('/', async (req, res) => {
   try {
-    const { status, cidade, especie } = req.query;
+    const { status, cidade, especie, usuario_id } = req.query;
     let query = supabase
       .from('pets_perdidos')
       .select('*')
       .order('criado_em', { ascending: false });
 
-    if (status)  query = query.eq('status', status);
-    if (cidade)  query = query.eq('cidade', cidade);
-    if (especie) query = query.eq('especie', especie);
+    if (status)     query = query.eq('status', status);
+    if (cidade)     query = query.eq('cidade', cidade);
+    if (especie)    query = query.eq('especie', especie);
+    if (usuario_id) query = query.eq('usuario_id', usuario_id);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -33,29 +48,36 @@ router.get('/', async (req, res) => {
 });
 
 // POST /pets/validar-foto — verifica se imagem contém animal e não tem conteúdo sensível
-router.post('/validar-foto', async (req, res) => {
+router.post('/validar-foto', autenticar, async (req, res) => {
   try {
     const { imagemBase64 } = req.body;
     if (!imagemBase64) return res.status(400).json({ erro: 'imagemBase64 é obrigatório' });
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }, MODEL_OPTIONS);
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          data: toBase64(imagemBase64),
-          mimeType: 'image/jpeg',
-        },
-      },
-      'Analise esta imagem. Responda APENAS com JSON válido, sem markdown: {"ehAnimal": boolean, "temConteudoSensivel": boolean, "motivo": string_ou_null}. ehAnimal=true se a imagem contém um animal doméstico (cachorro, gato, coelho, hamster, etc). temConteudoSensivel=true se há nudez, violência ou conteúdo impróprio. motivo=null se aprovada, ou uma frase curta em português explicando a reprovação.',
-    ]);
+    const tamanhoKB = Math.round(imagemBase64.length * 0.75 / 1024);
+    console.log(`[validar-foto] base64 recebido: ~${tamanhoKB}KB`);
 
-    const texto = result.response.text().trim().replace(/```json|```/g, '').trim();
-    const json = JSON.parse(texto);
+    console.log('[validar-foto] chamando Groq...');
+    const result = await comTimeout(
+      groq.chat.completions.create({
+        model: VISION_MODEL,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: toDataUrl(imagemBase64) } },
+            { type: 'text', text: 'Analise esta imagem. Responda APENAS com JSON válido, sem markdown: {"ehAnimal": boolean, "temConteudoSensivel": boolean, "motivo": string_ou_null}. ehAnimal=true se a imagem contém um animal doméstico (cachorro, gato, coelho, hamster, etc). temConteudoSensivel=true se há nudez, violência ou conteúdo impróprio. motivo=null se aprovada, ou uma frase curta em português explicando a reprovação.' },
+          ],
+        }],
+        max_tokens: 200,
+      }),
+      50000,
+      'Groq não respondeu em 50s'
+    );
+    console.log('[validar-foto] Groq respondeu');
+
+    const json = parseGroqJson(result);
     const aprovada = json.ehAnimal === true && json.temConteudoSensivel === false;
 
     res.json({
-      mensagem: aprovada ? 'Imagem aprovada.' : 'Imagem reprovada.',
-      status: 200,
       data: { aprovada, ehAnimal: json.ehAnimal, temConteudoSensivel: json.temConteudoSensivel, motivo: json.motivo ?? null },
     });
   } catch (err) {
@@ -63,8 +85,8 @@ router.post('/validar-foto', async (req, res) => {
   }
 });
 
-// POST /pets/buscar-similares — encontra pets similares usando Claude
-router.post('/buscar-similares', async (req, res) => {
+// POST /pets/buscar-similares — busca visual por similares usando Gemini (requer imagem)
+router.post('/buscar-similares', autenticar, async (req, res) => {
   try {
     const { imagemBase64, especie, cor, raca, cidade } = req.body;
     if (!imagemBase64) return res.status(400).json({ erro: 'imagemBase64 é obrigatório' });
@@ -86,19 +108,25 @@ router.post('/buscar-similares', async (req, res) => {
       .map((p, i) => `${i + 1}. id="${p.id}" nome="${p.nome}" especie="${p.especie}" raca="${p.raca || '?'}" cor="${p.cor || '?'}" cidade="${p.cidade || '?'}"`)
       .join('\n');
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }, MODEL_OPTIONS);
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          data: toBase64(imagemBase64),
-          mimeType: 'image/jpeg',
-        },
-      },
-      `Esta foto é de um pet: especie="${especie || '?'}", cor="${cor || '?'}", raca="${raca || '?'}". Compare visualmente e por atributos com os pets cadastrados abaixo. Retorne APENAS JSON array sem markdown com os até 3 mais similares (score >= 5, escala 1-10): [{"id":"uuid_exato","score":number,"justificativa":"frase curta em português"}]. Se nenhum tiver score >= 5, retorne []. Pets cadastrados:\n${listaPets}`,
-    ]);
+    console.log('[buscar-similares] chamando Groq...');
+    const result = await comTimeout(
+      groq.chat.completions.create({
+        model: VISION_MODEL,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: toDataUrl(imagemBase64) } },
+            { type: 'text', text: `Esta foto é de um pet: especie="${especie || '?'}", cor="${cor || '?'}", raca="${raca || '?'}". Compare visualmente e por atributos com os pets cadastrados abaixo. Retorne APENAS JSON array sem markdown com os até 3 mais similares (score >= 5, escala 1-10): [{"id":"uuid_exato","score":number,"justificativa":"frase curta em português"}]. Se nenhum tiver score >= 5, retorne []. Pets cadastrados:\n${listaPets}` },
+          ],
+        }],
+        max_tokens: 500,
+      }),
+      50000,
+      'Groq não respondeu em 50s'
+    );
+    console.log('[buscar-similares] Groq respondeu');
 
-    const texto = result.response.text().trim().replace(/```json|```/g, '').trim();
-    const similares = JSON.parse(texto);
+    const similares = parseGroqJson(result);
 
     const resultado = similares
       .filter(s => s.score >= 5)
@@ -107,20 +135,15 @@ router.post('/buscar-similares', async (req, res) => {
         pet: candidatos.find(c => c.id === s.id),
         score: s.score,
         justificativa: s.justificativa,
-      }))
-      .filter(s => s.pet);
+      }));
 
-    res.json({
-      mensagem: `${resultado.length} pet(s) similar(es) encontrado(s).`,
-      status: 200,
-      data: resultado,
-    });
+    res.json({ data: resultado });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
 });
 
-// GET /pets/:id/similares — retorna até 3 pets similares por espécie e cidade
+// GET /pets/:id/similares — similares por espécie/cidade (filtro SQL, sem análise de imagem)
 router.get('/:id/similares', async (req, res) => {
   try {
     const { data: pet, error: errPet } = await supabase
@@ -175,7 +198,7 @@ router.post('/', autenticar, async (req, res) => {
     const { data, error } = await supabase
       .from('pets_perdidos')
       .insert({
-        usuario_id: req.session.usuario.id,
+        usuario_id: req.usuario.id,
         nome, especie, raca, cor, descricao,
         foto_url, data_perda, endereco, bairro, cidade,
         localizacao: latitude && longitude ? `POINT(${longitude} ${latitude})` : null,
@@ -197,7 +220,7 @@ router.patch('/:id/encontrado', autenticar, async (req, res) => {
       .from('pets_perdidos')
       .update({ status: 'encontrado', atualizado_em: new Date() })
       .eq('id', req.params.id)
-      .eq('usuario_id', req.session.usuario.id)
+      .eq('usuario_id', req.usuario.id)
       .select()
       .single();
 

@@ -47,7 +47,7 @@ def executar_dbscan(supabase_client, eps_km=1.0, min_samples=3):
             'total_pets':    len(membros),
             'centroide_lat': float(np.mean(lats)),
             'centroide_lng': float(np.mean(lngs)),
-            'criticidade':   'alta' if len(membros) >= 5 else 'media',
+            'criticidade':   'alta' if len(membros) >= 5 else ('media' if len(membros) >= 3 else 'baixa'),
             'pets':          membros,
         })
 
