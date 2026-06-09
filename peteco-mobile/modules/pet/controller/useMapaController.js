@@ -1,16 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { listarPets } from '../model/petModel';
 
 export default function useMapaController() {
   const [pets, setPets]       = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
+    setLoading(true);
     listarPets({ status: 'perdido' })
       .then(setPets)
       .catch(() => setPets([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, []));
 
   return { pets, loading };
 }

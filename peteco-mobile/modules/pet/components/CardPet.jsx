@@ -9,6 +9,16 @@ function isoParaPtBR(iso) {
   return `${d}/${m}/${a}`;
 }
 
+function primeiraFoto(fotoUrl) {
+  if (!fotoUrl) return null;
+  try {
+    const parsed = JSON.parse(fotoUrl);
+    return Array.isArray(parsed) ? parsed[0] ?? null : fotoUrl;
+  } catch {
+    return fotoUrl;
+  }
+}
+
 function EspecieIcon({ especie, size = 32, color }) {
   const cor = color ?? colors.primary;
   if (especie === 'cachorro') return <MaterialCommunityIcons name="dog" size={size} color={cor} />;
@@ -16,7 +26,7 @@ function EspecieIcon({ especie, size = 32, color }) {
   return <Ionicons name="paw-outline" size={size} color={cor} />;
 }
 
-export default function CardPet({ pet }) {
+export default function CardPet({ pet, notificacoes = 0 }) {
   const router  = useRouter();
   const perdido = pet.status === 'perdido';
 
@@ -26,13 +36,22 @@ export default function CardPet({ pet }) {
       activeOpacity={0.85}
       onPress={() => router.push(`/pet/${pet.id}`)}
     >
-      {pet.foto_url ? (
-        <Image source={{ uri: pet.foto_url }} style={s.foto} />
-      ) : (
-        <View style={[s.foto, s.fotoVazia]}>
-          <EspecieIcon especie={pet.especie?.toLowerCase()} size={32} />
+      <View style={s.fotoContainer}>
+        <View style={s.fotoWrapper}>
+          {primeiraFoto(pet.foto_url) ? (
+            <Image source={{ uri: primeiraFoto(pet.foto_url) }} style={s.foto} />
+          ) : (
+            <View style={[s.foto, s.fotoVazia]}>
+              <EspecieIcon especie={pet.especie?.toLowerCase()} size={32} />
+            </View>
+          )}
         </View>
-      )}
+        {notificacoes > 0 && (
+          <View style={s.notifBadge}>
+            <Text style={s.notifBadgeTexto}>!</Text>
+          </View>
+        )}
+      </View>
 
       <View style={s.info}>
         <View style={s.topoLinha}>
@@ -65,8 +84,18 @@ const s = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     marginBottom: 12,
-    overflow: 'hidden',
     ...shadow.card,
+  },
+  fotoContainer: {
+    width: 90,
+    height: 90,
+  },
+  fotoWrapper: {
+    width: 90,
+    height: 90,
+    borderTopLeftRadius: radius.lg,
+    borderBottomLeftRadius: radius.lg,
+    overflow: 'hidden',
   },
   foto: {
     width: 90,
@@ -76,6 +105,26 @@ const s = StyleSheet.create({
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  notifBadge: {
+    position: 'absolute',
+    bottom: -10,
+    right: -10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#F97316',
+    borderWidth: 2,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  notifBadgeTexto: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '900',
+    lineHeight: 16,
   },
   info: {
     flex: 1,

@@ -4,10 +4,12 @@ export const RACAS = {
   cachorro: [
     SEM_RACA,
     'Beagle',
-    'Bichon Frisé',
     'Boxer',
     'Bulldog Francês',
+    'Chihuahua',
+    'Cocker Spaniel',
     'Dachshund (Salsicha)',
+    'Dálmata',
     'Golden Retriever',
     'Labrador Retriever',
     'Lulu da Pomerânia',

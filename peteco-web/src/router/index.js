@@ -3,6 +3,10 @@ import { http } from '../client/http.js'
 
 const routes = [
   {
+    path: '/',
+    component: () => import('../pages/landing/Landing.vue')
+  },
+  {
     path: '/login',
     component: () => import('../pages/auth/Login.vue')
   },
@@ -11,33 +15,28 @@ const routes = [
     component: () => import('../pages/auth/Cadastro.vue')
   },
   {
-    path: '/',
-    component: () => import('../pages/mapa/Mapa.vue'),
+    path: '/feed',
+    component: () => import('../pages/feed/Feed.vue'),
     meta: { requerAuth: true }
   },
   {
-    path: '/heatmap',
-    component: () => import('../pages/mapa/Heatmap.vue'),
+    path: '/pet/:id',
+    component: () => import('../pages/pet/DetalhePet.vue'),
     meta: { requerAuth: true }
   },
   {
-    path: '/clusters',
-    component: () => import('../pages/mapa/Clusters.vue'),
-    meta: { requerAuth: true }
-  },
-  {
-    path: '/dashboard',
-    component: () => import('../pages/dashboard/Dashboard.vue'),
-    meta: { requerAuth: true }
-  },
-  {
-    path: '/analise',
-    component: () => import('../pages/analise/Analise.vue'),
+    path: '/analytics',
+    component: () => import('../pages/analytics/Analytics.vue'),
     meta: { requerAuth: true }
   },
   {
     path: '/pets',
     component: () => import('../pages/pets/ListaPets.vue'),
+    meta: { requerAuth: true }
+  },
+  {
+    path: '/analise',
+    component: () => import('../pages/analise/Analise.vue'),
     meta: { requerAuth: true }
   },
   {
@@ -52,7 +51,7 @@ const routes = [
   },
   {
     path: '/:pathMatch(.*)*',
-    redirect: '/'
+    redirect: '/feed'
   },
 ]
 
@@ -64,6 +63,7 @@ router.beforeEach(async (to) => {
     await http.get('/auth/me')
     return true
   } catch {
+    if (localStorage.getItem('peteco_usuario')) return true
     return '/login'
   }
 })

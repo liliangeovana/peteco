@@ -53,13 +53,51 @@ export async function listarSimilares(id) {
   return data || [];
 }
 
+export async function listarAvistamentos(id) {
+  const { data } = await api.get(`/pets/${id}/avistamentos`);
+  return data || [];
+}
+
+export async function criarAvistamento(id, payload, accessToken) {
+  const { data } = await api.post(`/pets/${id}/avistamentos`, payload, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return data;
+}
+
+export async function buscarNotificacoes(accessToken) {
+  const { data } = await api.get('/pets/notificacoes', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return data || [];
+}
+
+export async function marcarAvistamentosVistos(id, accessToken) {
+  await api.patch(`/pets/${id}/avistamentos/marcar-vistos`, {}, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+export async function atualizarPet(id, payload, accessToken) {
+  const { data } = await api.put(`/pets/${id}`, payload, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return data;
+}
+
+export async function excluirPet(id, accessToken) {
+  await api.delete(`/pets/${id}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
 export async function uploadFoto(uri) {
-  const response = await fetch(uri);
-  const blob = await response.blob();
+  const file = new File(uri);
+  const bytes = await file.bytes();
   const nome = `pets/${Date.now()}.jpg`;
   const { error } = await supabase.storage
     .from('fotos-pets')
-    .upload(nome, blob, { contentType: 'image/jpeg' });
+    .upload(nome, bytes, { contentType: 'image/jpeg' });
   if (error) throw error;
   const { data } = supabase.storage.from('fotos-pets').getPublicUrl(nome);
   return data.publicUrl;

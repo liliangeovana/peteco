@@ -67,10 +67,10 @@ onMounted(async () => {
         <div class="flex flex-col gap-1">
           <RouterLink
             v-for="link in [
-              { to: '/',          Icon: MapPin,          label: 'Mapa de ocorrências',  color: '#7C3AED' },
-              { to: '/clusters',  Icon: BrainCircuit,    label: 'Clusters DBSCAN',      color: '#3b82f6' },
+              { to: '/feed',       Icon: MapPin,          label: 'Feed de pets',         color: '#7C3AED' },
+              { to: '/analytics', Icon: BrainCircuit,    label: 'Analytics & Clusters', color: '#3b82f6' },
               { to: '/pets',      Icon: List,            label: 'Lista de pets',         color: '#2EBD7A' },
-              { to: '/dashboard', Icon: LayoutDashboard, label: 'Dashboard analítico',   color: '#f97316' },
+              { to: '/analise',   Icon: LayoutDashboard, label: 'Análise detalhada',     color: '#f97316' },
             ]"
             :key="link.to"
             :to="link.to"

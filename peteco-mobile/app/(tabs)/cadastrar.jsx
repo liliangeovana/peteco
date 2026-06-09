@@ -10,6 +10,7 @@ import { colors, radius, font, shadow } from '../../constants/theme';
 import { BAIRROS_BOA_VISTA, OPCAO_OUTRO } from '../../constants/bairros';
 import { RACAS } from '../../constants/racas';
 import useCadastrarController from '../../modules/pet/controller/useCadastrarController';
+import DatePickerField from '../../shared/components/DatePickerField';
 
 const ESPECIES = ['cachorro', 'gato', 'outro'];
 const OPCOES_BAIRRO = [...BAIRROS_BOA_VISTA.map(b => b.nome), OPCAO_OUTRO];
@@ -20,12 +21,13 @@ export default function CadastrarPet() {
   const [modalRaca, setModalRaca]     = useState(false);
 
   const {
-    form, set, foto, coords,
+    form, set, fotos, fotosValidadas, validandoFoto, coords,
     bairroSelecionado, bairroOutro, setBairroSelecionado, setBairroOutro,
     racaSelecionada, selecionarRaca, selecionarEspecie,
-    buscandoGps, enviando, validandoFoto, fotoValidada,
-    selecionarFoto, obterGps, handleDataPerda, enviar,
-  } = useCadastrarController(() => router.replace('/(tabs)/feed'));
+    buscandoGps, enviando,
+    dataPerda, setDataPerda,
+    selecionarFoto, removerFoto, obterGps, enviar,
+  } = useCadastrarController((petId) => router.replace(`/pet/${petId}`));
 
   return (
     <KeyboardAvoidingView
@@ -41,36 +43,47 @@ export default function CadastrarPet() {
       <Text style={s.titulo}>Cadastrar pet perdido</Text>
       <Text style={s.sub}>Preencha as informações para ajudar a encontrá-lo</Text>
 
-      {/* Foto */}
-      <TouchableOpacity style={s.fotoBtn} onPress={selecionarFoto} activeOpacity={0.8} disabled={validandoFoto}>
-        {foto ? (
-          <View>
-            <Image source={{ uri: foto }} style={s.fotoPreview} />
-            {validandoFoto && (
-              <View style={s.fotoLoadingOverlay}>
-                <ActivityIndicator color="#fff" size="large" />
-                <Text style={s.fotoLoadingTexto}>Analisando com IA...</Text>
+      {/* Fotos */}
+      <View style={s.fotosRow}>
+        {fotos.map((uri, idx) => (
+          <View key={idx} style={s.fotoThumb}>
+            <Image source={{ uri }} style={s.fotoThumbImg} />
+            {validandoFoto && idx === fotos.length - 1 && (
+              <View style={s.fotoOverlay}>
+                <ActivityIndicator color="#fff" size="small" />
               </View>
             )}
-            {!validandoFoto && fotoValidada && (
-              <View style={s.fotoValidadaBadge}>
-                <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                <Text style={s.fotoValidadaTexto}>Validado pela IA</Text>
+            {fotosValidadas[idx] && !(validandoFoto && idx === fotos.length - 1) && (
+              <View style={s.fotoCheckBadge}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
               </View>
             )}
+            <TouchableOpacity style={s.fotoLixeira} onPress={() => removerFoto(idx)}>
+              <Ionicons name="trash-outline" size={14} color="#fff" />
+            </TouchableOpacity>
           </View>
-        ) : validandoFoto ? (
-          <View style={s.fotoPlaceholder}>
-            <ActivityIndicator color={colors.primary} size="large" />
-            <Text style={[s.fotoTexto, { marginTop: 8 }]}>Analisando com IA...</Text>
-          </View>
-        ) : (
-          <View style={s.fotoPlaceholder}>
-            <Ionicons name="camera-outline" size={36} color={colors.primary} />
-            <Text style={s.fotoTexto}>Adicionar foto</Text>
-          </View>
+        ))}
+        {fotos.length < 3 && (
+          <TouchableOpacity
+            style={s.fotoAddBtn}
+            onPress={selecionarFoto}
+            disabled={validandoFoto}
+            activeOpacity={0.8}
+          >
+            {validandoFoto && fotos.length > 0 ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : (
+              <>
+                <Ionicons name="camera-outline" size={28} color={colors.primary} />
+                <Text style={s.fotoAddTexto}>
+                  {fotos.length === 0 ? 'Adicionar foto' : 'Mais foto'}
+                </Text>
+                <Text style={s.fotoAddContador}>{fotos.length}/3</Text>
+              </>
+            )}
+          </TouchableOpacity>
         )}
-      </TouchableOpacity>
+      </View>
 
       {/* Informações básicas */}
       <View style={s.secao}>
@@ -109,19 +122,21 @@ export default function CadastrarPet() {
           </View>
         </View>
 
-        <View style={s.campo}>
-          <Text style={s.label}>Raça</Text>
-          <TouchableOpacity
-            style={[s.input, s.selectBtn]}
-            onPress={() => setModalRaca(true)}
-            activeOpacity={0.8}
-          >
-            <Text style={racaSelecionada ? s.selectTexto : s.selectPlaceholder}>
-              {racaSelecionada || 'Selecione a raça'}
-            </Text>
-            <Ionicons name="chevron-down" size={18} color={colors.textLight} />
-          </TouchableOpacity>
-        </View>
+        {(form.especie === 'cachorro' || form.especie === 'gato') && (
+          <View style={s.campo}>
+            <Text style={s.label}>Raça</Text>
+            <TouchableOpacity
+              style={[s.input, s.selectBtn]}
+              onPress={() => setModalRaca(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={racaSelecionada ? s.selectTexto : s.selectPlaceholder}>
+                {racaSelecionada || 'Sem raça definida'}
+              </Text>
+              <Ionicons name="chevron-down" size={18} color={colors.textLight} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={s.campo}>
           <Text style={s.label}>Cor</Text>
@@ -149,14 +164,10 @@ export default function CadastrarPet() {
 
         <View style={s.campo}>
           <Text style={s.label}>Data de perda</Text>
-          <TextInput
-            style={s.input}
-            value={form.data_perda}
-            onChangeText={handleDataPerda}
-            placeholder="DD/MM/AAAA"
-            placeholderTextColor={colors.textLight}
-            keyboardType="numeric"
-            maxLength={10}
+          <DatePickerField
+            value={dataPerda}
+            onChange={setDataPerda}
+            placeholder="Selecionar data"
           />
         </View>
       </View>
@@ -335,58 +346,68 @@ const s = StyleSheet.create({
     color: colors.textMid,
     marginBottom: 24,
   },
-  fotoBtn: {
-    borderRadius: radius.lg,
-    overflow: 'hidden',
+  fotosRow: {
+    flexDirection: 'row',
+    gap: 10,
     marginBottom: 24,
+    flexWrap: 'wrap',
+  },
+  fotoThumb: {
+    width: 100,
+    height: 100,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    position: 'relative',
     ...shadow.card,
   },
-  fotoPreview: {
+  fotoThumbImg: {
     width: '100%',
-    height: 200,
+    height: '100%',
   },
-  fotoPlaceholder: {
-    width: '100%',
-    height: 160,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  fotoTexto: {
-    fontSize: 14,
-    color: colors.primary,
-    ...font.medium,
-  },
-  fotoLoadingOverlay: {
+  fotoOverlay: {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
   },
-  fotoLoadingTexto: {
-    color: '#fff',
-    fontSize: 13,
-    ...font.bold,
-  },
-  fotoValidadaBadge: {
+  fotoCheckBadge: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    top: 6,
+    left: 6,
     backgroundColor: 'rgba(255,255,255,0.9)',
     borderRadius: radius.full,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    padding: 2,
   },
-  fotoValidadaTexto: {
+  fotoLixeira: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: radius.full,
+    padding: 5,
+  },
+  fotoAddBtn: {
+    width: 100,
+    height: 100,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  fotoAddTexto: {
     fontSize: 11,
-    color: colors.success,
-    ...font.bold,
+    color: colors.primary,
+    ...font.medium,
+    textAlign: 'center',
+  },
+  fotoAddContador: {
+    fontSize: 10,
+    color: colors.textLight,
   },
   secao: {
     backgroundColor: colors.card,

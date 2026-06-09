@@ -7,28 +7,21 @@ import { SEM_RACA } from '../../../constants/racas';
 import { validarFoto, buscarSimilares, criarPet, uploadFoto, lerBase64 } from '../model/petModel';
 import { obterSessao } from '../../auth/model/authModel';
 
-function ddmmAAAA_para_iso(data) {
-  if (!data || data.length < 10) return data || null;
-  const [dd, mm, aaaa] = data.split('/');
-  if (!dd || !mm || !aaaa || aaaa.length < 4) return null;
-  return `${aaaa}-${mm}-${dd}`;
-}
-
 export default function useCadastrarController(onSuccess) {
   const [form, setForm] = useState({
-    nome: '', especie: 'cachorro', raca: '', cor: '',
-    descricao: '', data_perda: '',
+    nome: '', especie: '', raca: '', cor: '', descricao: '',
   });
+  const [dataPerda, setDataPerda] = useState(null);
   const [bairroSelecionado, setBairroSelecionado] = useState('');
   const [bairroOutro, setBairroOutro]             = useState('');
   const [racaSelecionada, setRacaSelecionada]     = useState('');
-  const [foto, setFoto]                           = useState(null);
-  const [fotoBase64, setFotoBase64]               = useState(null);
+  const [fotos, setFotos]                         = useState([]);
+  const [fotosBase64, setFotosBase64]             = useState([]);
+  const [fotosValidadas, setFotosValidadas]       = useState([]);
+  const [validandoFoto, setValidandoFoto]         = useState(false);
   const [coords, setCoords]                       = useState(null);
   const [buscandoGps, setBuscandoGps]             = useState(false);
   const [enviando, setEnviando]                   = useState(false);
-  const [validandoFoto, setValidandoFoto]         = useState(false);
-  const [fotoValidada, setFotoValidada]           = useState(false);
 
   const set = (campo, valor) => setForm(f => ({ ...f, [campo]: valor }));
 
@@ -39,25 +32,32 @@ export default function useCadastrarController(onSuccess) {
 
   const selecionarEspecie = (especie) => {
     set('especie', especie);
-    setRacaSelecionada('');
+    if (especie === 'cachorro' || especie === 'gato') {
+      setRacaSelecionada(SEM_RACA);
+    } else {
+      setRacaSelecionada('');
+    }
     set('raca', '');
   };
 
-  const resetFoto = () => {
-    setFoto(null);
-    setFotoBase64(null);
-    setFotoValidada(false);
+  const removerFoto = (idx) => {
+    setFotos(f => f.filter((_, i) => i !== idx));
+    setFotosBase64(f => f.filter((_, i) => i !== idx));
+    setFotosValidadas(f => f.filter((_, i) => i !== idx));
   };
 
-  const handleDataPerda = (texto) => {
-    const nums = texto.replace(/\D/g, '').slice(0, 8);
-    let formatado = nums;
-    if (nums.length > 4) formatado = `${nums.slice(0,2)}/${nums.slice(2,4)}/${nums.slice(4)}`;
-    else if (nums.length > 2) formatado = `${nums.slice(0,2)}/${nums.slice(2)}`;
-    set('data_perda', formatado);
+  const resetFotos = () => {
+    setFotos([]);
+    setFotosBase64([]);
+    setFotosValidadas([]);
+    setValidandoFoto(false);
   };
 
   const selecionarFoto = async () => {
+    if (fotos.length >= 3) {
+      Alert.alert('Limite atingido', 'Você pode adicionar no máximo 3 fotos.');
+      return;
+    }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permissão negada', 'Precisamos de acesso à galeria.');
@@ -74,24 +74,27 @@ export default function useCadastrarController(onSuccess) {
     if (res.canceled) return;
 
     const uri = res.assets[0].uri;
-    resetFoto();
-    setFoto(uri);
+    const idx = fotos.length;
+    setFotos(f => [...f, uri]);
+    setFotosBase64(f => [...f, null]);
+    setFotosValidadas(f => [...f, false]);
     setValidandoFoto(true);
+
     try {
       const [base64, session] = await Promise.all([lerBase64(uri), obterSessao()]);
-      setFotoBase64(base64);
+      setFotosBase64(f => { const n = [...f]; n[idx] = base64; return n; });
       const resultado = await validarFoto(base64, session?.access_token);
       if (!resultado.data.aprovada) {
-        resetFoto();
+        removerFoto(idx);
         Alert.alert(
           'Foto não aprovada',
           resultado.data.motivo || 'A imagem não parece ser de um animal doméstico.',
         );
       } else {
-        setFotoValidada(true);
+        setFotosValidadas(f => { const n = [...f]; n[idx] = true; return n; });
       }
     } catch (err) {
-      resetFoto();
+      removerFoto(idx);
       const detalhe = err?.response?.data?.erro || err?.message || 'Erro desconhecido';
       Alert.alert('Erro na validação', detalhe);
     } finally {
@@ -123,34 +126,30 @@ export default function useCadastrarController(onSuccess) {
   };
 
   const verificarSimilares = async () => {
-    if (!foto || !fotoValidada || !fotoBase64) return true;
+    const base64Principal = fotosBase64[0];
+    if (!base64Principal || !fotosValidadas[0]) return;
     try {
       const session = await obterSessao();
-      const bairroFinal = bairroSelecionado === OPCAO_OUTRO ? bairroOutro : bairroSelecionado;
-      const res = await buscarSimilares({
-        imagemBase64: fotoBase64,
+      await buscarSimilares({
+        imagemBase64: base64Principal,
         especie: form.especie,
         cor: form.cor,
         raca: form.raca,
         cidade: 'Boa Vista',
       }, session?.access_token);
-      if (res.data?.length > 0) {
-        const nomes = res.data.map(s => `• ${s.pet.nome} (${s.justificativa})`).join('\n');
-        return await new Promise(resolve => {
-          Alert.alert(
-            'Pets similares encontrados',
-            `Encontramos ${res.data.length} pet(s) que pode(m) ser o mesmo animal:\n\n${nomes}\n\nDeseja continuar cadastrando mesmo assim?`,
-            [
-              { text: 'Cancelar', onPress: () => resolve(false), style: 'cancel' },
-              { text: 'Continuar', onPress: () => resolve(true) },
-            ]
-          );
-        });
-      }
     } catch (err) {
       console.warn('[verificarSimilares]', err?.message);
     }
-    return true;
+  };
+
+  const resetarFormulario = () => {
+    setForm({ nome: '', especie: '', raca: '', cor: '', descricao: '' });
+    setDataPerda(null);
+    setBairroSelecionado('');
+    setBairroOutro('');
+    setRacaSelecionada('');
+    setCoords(null);
+    resetFotos();
   };
 
   const enviar = async () => {
@@ -163,26 +162,28 @@ export default function useCadastrarController(onSuccess) {
       Alert.alert('Selecione o bairro onde o pet foi visto');
       return;
     }
-    if (foto && !fotoValidada) {
-      Alert.alert('Foto inválida', 'A foto selecionada não foi aprovada pela IA. Selecione uma foto do seu pet.');
+    if (fotos.length > 0 && fotosValidadas.some(v => !v)) {
+      Alert.alert('Foto inválida', 'Há fotos não aprovadas pela IA. Remova-as antes de continuar.');
       return;
     }
     setEnviando(true);
     try {
-      const deveConfirmar = await verificarSimilares();
-      if (!deveConfirmar) return;
+      verificarSimilares(); // roda em background, sem bloquear
 
       const session = await obterSessao();
       let foto_url = null;
-      if (foto) foto_url = await uploadFoto(foto);
+      if (fotos.length > 0) {
+        const urls = await Promise.all(fotos.map(f => uploadFoto(f)));
+        foto_url = JSON.stringify(urls);
+      }
 
       const latBairro = coords?.latitude  ?? BAIRROS_BOA_VISTA.find(b => b.nome === bairroSelecionado)?.lat;
       const lngBairro = coords?.longitude ?? BAIRROS_BOA_VISTA.find(b => b.nome === bairroSelecionado)?.lng;
 
-      await criarPet(
+      const novoPet = await criarPet(
         {
           ...form,
-          data_perda: ddmmAAAA_para_iso(form.data_perda),
+          data_perda: dataPerda ? dataPerda.toISOString().split('T')[0] : null,
           bairro: bairroFinal,
           cidade: 'Boa Vista',
           foto_url,
@@ -192,9 +193,8 @@ export default function useCadastrarController(onSuccess) {
         session?.access_token,
       );
 
-      Alert.alert('Pet cadastrado! 🐾', 'Agora ele aparece no feed e no mapa.', [
-        { text: 'OK', onPress: onSuccess },
-      ]);
+      resetarFormulario();
+      onSuccess(novoPet.id);
     } catch (err) {
       Alert.alert('Erro ao cadastrar', err.response?.data?.erro || err.message);
     } finally {
@@ -205,7 +205,9 @@ export default function useCadastrarController(onSuccess) {
   return {
     form,
     set,
-    foto,
+    fotos,
+    fotosValidadas,
+    validandoFoto,
     coords,
     bairroSelecionado,
     bairroOutro,
@@ -216,11 +218,11 @@ export default function useCadastrarController(onSuccess) {
     selecionarEspecie,
     buscandoGps,
     enviando,
-    validandoFoto,
-    fotoValidada,
+    dataPerda,
+    setDataPerda,
     selecionarFoto,
+    removerFoto,
     obterGps,
-    handleDataPerda,
     enviar,
   };
 }

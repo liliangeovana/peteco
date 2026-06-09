@@ -3,40 +3,34 @@ import { computed } from 'vue'
 import { useRoute, RouterLink, RouterView } from 'vue-router'
 import { useAuth } from './modules/auth/controllers/useAuth.js'
 import {
-  PawPrint, MapPin, Flame, BrainCircuit, LayoutDashboard,
-  TrendingUp, List, User, LogOut,
+  PawPrint, LayoutList, BarChart2, List, User, LogOut,
 } from 'lucide-vue-next'
 
 const route = useRoute()
 const { usuario, logout } = useAuth()
 
-const rotasPublicas = ['/login', '/cadastro']
+const rotasPublicas = ['/', '/login', '/cadastro']
 const mostrarNav = computed(() => !rotasPublicas.includes(route.path))
+
+const isConstrained = computed(() => !['/', '/login', '/cadastro'].includes(route.path))
 </script>
 
 <template>
   <div class="min-h-screen flex flex-col bg-peteco-bg">
 
     <nav v-if="mostrarNav" class="navbar">
-      <RouterLink to="/" class="navbar-logo">
-        <PawPrint :size="22" />
+      <RouterLink to="/feed" class="navbar-logo">
+        <span class="navbar-logo-icon">
+          <PawPrint :size="16" />
+        </span>
         PETECO
       </RouterLink>
       <div class="navbar-links">
-        <RouterLink class="navbar-link" active-class="navbar-link-active" to="/">
-          <MapPin :size="15" /> Mapa
+        <RouterLink class="navbar-link" active-class="navbar-link-active" to="/feed">
+          <LayoutList :size="15" /> Feed
         </RouterLink>
-        <RouterLink class="navbar-link" active-class="navbar-link-active" to="/heatmap">
-          <Flame :size="15" /> Heatmap
-        </RouterLink>
-        <RouterLink class="navbar-link" active-class="navbar-link-active" to="/clusters">
-          <BrainCircuit :size="15" /> Clusters
-        </RouterLink>
-        <RouterLink class="navbar-link" active-class="navbar-link-active" to="/dashboard">
-          <LayoutDashboard :size="15" /> Dashboard
-        </RouterLink>
-        <RouterLink class="navbar-link" active-class="navbar-link-active" to="/analise">
-          <TrendingUp :size="15" /> Análise
+        <RouterLink class="navbar-link" active-class="navbar-link-active" to="/analytics">
+          <BarChart2 :size="15" /> Analytics
         </RouterLink>
         <RouterLink class="navbar-link" active-class="navbar-link-active" to="/pets">
           <List :size="15" /> Pets
@@ -54,7 +48,11 @@ const mostrarNav = computed(() => !rotasPublicas.includes(route.path))
       </button>
     </nav>
 
-    <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-6">
+    <main
+      :class="isConstrained
+        ? 'flex-1 max-w-6xl mx-auto w-full px-4 py-6'
+        : 'flex-1'"
+    >
       <RouterView />
     </main>
 

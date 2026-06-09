@@ -172,6 +172,36 @@ router.get('/:id/similares', async (req, res) => {
   }
 });
 
+// GET /pets/notificacoes — avistamentos não vistos dos pets do usuário (requer sessão)
+router.get('/notificacoes', autenticar, async (req, res) => {
+  try {
+    const { data: meusPets } = await supabase
+      .from('pets_perdidos')
+      .select('id')
+      .eq('usuario_id', req.usuario.id);
+
+    if (!meusPets?.length) return res.json([]);
+
+    const ids = meusPets.map(p => p.id);
+    const { data, error } = await supabase
+      .from('avistamentos')
+      .select('pet_id')
+      .in('pet_id', ids)
+      .eq('visto_pelo_dono', false);
+
+    if (error) throw error;
+
+    const contagem = {};
+    (data ?? []).forEach(a => {
+      contagem[a.pet_id] = (contagem[a.pet_id] ?? 0) + 1;
+    });
+
+    res.json(Object.entries(contagem).map(([pet_id, count]) => ({ pet_id, count })));
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 // GET /pets/:id — detalhe de um pet
 router.get('/:id', async (req, res) => {
   try {
@@ -182,7 +212,19 @@ router.get('/:id', async (req, res) => {
       .single();
 
     if (error || !data) return res.status(404).json({ erro: 'Pet não encontrado' });
-    res.json(data);
+
+    let nome_dono = null;
+    if (data.usuario_id) {
+      try {
+        const { data: userdata, error: authErr } = await supabase.auth.admin.getUserById(data.usuario_id);
+        if (authErr) console.error('[nome_dono]', authErr.message);
+        else nome_dono = userdata?.user?.user_metadata?.nome ?? userdata?.user?.email ?? null;
+      } catch (e) {
+        console.error('[nome_dono]', e.message);
+      }
+    }
+
+    res.json({ ...data, nome_dono });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -208,6 +250,127 @@ router.post('/', autenticar, async (req, res) => {
 
     if (error) throw error;
     res.status(201).json(data);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// GET /pets/:id/avistamentos — lista avistamentos do pet
+router.get('/:id/avistamentos', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('avistamentos')
+      .select('*')
+      .eq('pet_id', req.params.id)
+      .order('criado_em', { ascending: false });
+
+    if (error) throw error;
+    res.json(data ?? []);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// POST /pets/:id/avistamentos — registra avistamento (requer sessão)
+router.post('/:id/avistamentos', autenticar, async (req, res) => {
+  try {
+    const { bairro, rua, descricao, fotos_url } = req.body;
+    if (!bairro) return res.status(400).json({ erro: 'Bairro é obrigatório' });
+
+    const nome_usuario = req.usuario.user_metadata?.nome
+      ?? req.usuario.nome
+      ?? req.usuario.email
+      ?? null;
+
+    const { data, error } = await supabase
+      .from('avistamentos')
+      .insert({
+        pet_id: req.params.id,
+        usuario_id: req.usuario.id,
+        nome_usuario,
+        bairro,
+        rua: rua || null,
+        descricao: descricao || null,
+        fotos_url: fotos_url || null,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// PATCH /pets/:id/avistamentos/marcar-vistos — dono marca avistamentos como vistos
+router.patch('/:id/avistamentos/marcar-vistos', autenticar, async (req, res) => {
+  try {
+    const { data: pet } = await supabase
+      .from('pets_perdidos').select('usuario_id').eq('id', req.params.id).single();
+
+    if (!pet || pet.usuario_id !== req.usuario.id)
+      return res.status(403).json({ erro: 'Sem permissão' });
+
+    await supabase
+      .from('avistamentos')
+      .update({ visto_pelo_dono: true })
+      .eq('pet_id', req.params.id)
+      .eq('visto_pelo_dono', false);
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// PUT /pets/:id — edita dados do pet (requer sessão e ser dono)
+router.put('/:id', autenticar, async (req, res) => {
+  try {
+    const { nome, especie, raca, cor, descricao, bairro, data_perda, foto_url } = req.body;
+    const { data, error } = await supabase
+      .from('pets_perdidos')
+      .update({ nome, especie, raca, cor, descricao, bairro, data_perda, foto_url, atualizado_em: new Date() })
+      .eq('id', req.params.id)
+      .eq('usuario_id', req.usuario.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (!data) return res.status(404).json({ erro: 'Pet não encontrado ou sem permissão' });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// DELETE /pets/:id — exclui pet (requer sessão e ser dono)
+router.delete('/:id', autenticar, async (req, res) => {
+  try {
+    const { data: pet } = await supabase
+      .from('pets_perdidos').select('foto_url, usuario_id').eq('id', req.params.id).single();
+
+    if (!pet || pet.usuario_id !== req.usuario.id)
+      return res.status(403).json({ erro: 'Sem permissão' });
+
+    if (pet.foto_url) {
+      try {
+        const urls = JSON.parse(pet.foto_url);
+        const paths = (Array.isArray(urls) ? urls : [pet.foto_url])
+          .map(u => u.split('/fotos-pets/')[1])
+          .filter(Boolean);
+        if (paths.length) await supabase.storage.from('fotos-pets').remove(paths);
+      } catch { /* silencia */ }
+    }
+
+    const { error } = await supabase
+      .from('pets_perdidos')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('usuario_id', req.usuario.id);
+
+    if (error) throw error;
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }

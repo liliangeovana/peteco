@@ -8,6 +8,16 @@ import { useRouter } from 'expo-router';
 import { colors, font, radius, shadow } from '../../constants/theme';
 import useMapaController from '../../modules/pet/controller/useMapaController';
 
+function primeiraFoto(fotoUrl) {
+  if (!fotoUrl) return null;
+  try {
+    const parsed = JSON.parse(fotoUrl);
+    return Array.isArray(parsed) ? parsed[0] ?? null : fotoUrl;
+  } catch {
+    return fotoUrl;
+  }
+}
+
 function EspecieIcon({ especie, size = 18, color }) {
   const cor = color ?? colors.primary;
   if (especie === 'cachorro') return <MaterialCommunityIcons name="dog" size={size} color={cor} />;
@@ -91,8 +101,8 @@ export default function PorBairro() {
                         onPress={() => router.push(`/pet/${pet.id}`)}
                         activeOpacity={0.8}
                       >
-                        {pet.foto_url ? (
-                          <Image source={{ uri: pet.foto_url }} style={s.petFoto} />
+                        {primeiraFoto(pet.foto_url) ? (
+                          <Image source={{ uri: primeiraFoto(pet.foto_url) }} style={s.petFoto} />
                         ) : (
                           <View style={[s.petFoto, s.petFotoVazia]}>
                             <EspecieIcon especie={pet.especie} size={20} />

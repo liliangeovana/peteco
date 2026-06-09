@@ -20,7 +20,7 @@ export default function Feed() {
   const {
     petsFiltrados, loading, refreshing,
     categoria, busca, setBusca,
-    onRefresh, selecionarCategoria,
+    notificacoes, onRefresh, selecionarCategoria,
   } = useFeedController();
 
   const Header = () => (
@@ -97,7 +97,7 @@ export default function Feed() {
       <FlatList
         data={petsFiltrados}
         keyExtractor={item => item.id}
-        renderItem={({ item }) => <CardPet pet={item} />}
+        renderItem={({ item }) => <CardPet pet={item} notificacoes={notificacoes[item.id] ?? 0} />}
         ListHeaderComponent={Header}
         contentContainerStyle={s.lista}
         refreshControl={
