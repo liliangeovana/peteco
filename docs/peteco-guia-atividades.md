@@ -84,13 +84,15 @@ Login / Cadastro
     ↓
 Feed de pets perdidos (tela principal)
     ↓ (tab bar)
-┌─────────────────────────────────────┐
-│  Feed │ Mapa │ Cadastrar │ Meus Pets │ Perfil  │
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│  Feed │ Mapa │  [+]  │ Meus Pets │ Perfil │
+└──────────────────────────────────────────┘
     ↓ (ao tocar num pet)
 Detalhe do Pet → "Encontrei este pet!"
     ↓ (ao cadastrar)
-Cadastrar Pet (câmera + GPS + CEP)
+Cadastrar Pet (câmera + GPS + bairro)
+    ↓ (busca avançada)
+Busca e Filtros (cidade + espécie)
 ```
 
 **2. As 10 telas essenciais:**
@@ -100,27 +102,27 @@ Cadastrar Pet (câmera + GPS + CEP)
 | 1 | Splash / Onboarding | Apresentar o app e redirecionar para login ou cadastro | Logo, headline, botões "Começar" e "Já tenho conta" |
 | 2 | Login | Autenticar usuário existente | Campos email/senha, botão entrar, link para cadastro |
 | 3 | Cadastro de usuário | Criar nova conta | Campos nome, email, telefone, senha e confirmação |
-| 4 | Feed de pets | Tela principal — lista de ocorrências próximas | FlatList com cards, filtro por espécie, busca |
-| 5 | Detalhe do pet | Exibir informações completas de uma ocorrência | Foto, chips de raça/idade/sexo, descrição, botões de contato e "Encontrei!" |
-| 6 | Cadastrar pet | Registrar novo pet perdido | Câmera, campos nome/espécie/raça/cor, campo CEP com busca automática, GPS |
-| 7 | Mapa de ocorrências | Visualização geográfica dos pets perdidos | Mapa com pins, toggle heatmap/pins, sheet inferior com lista próximos |
-| 8 | Busca e filtros | Encontrar pets por características | Campo de busca, chips de filtro (espécie, status), lista de resultados |
-| 9 | Meus pets | Gerenciar pets cadastrados pelo usuário logado | Lista de pets do usuário, botão "Marcar como encontrado", editar |
+| 4 | Feed de pets | Tela principal — lista de ocorrências | FlatList com cards, filtro por espécie (todos/cães/gatos/outros), busca por nome e bairro, pull-to-refresh |
+| 5 | Detalhe do pet | Exibir informações completas de uma ocorrência | Foto, chips de espécie/raça/cor/bairro/cidade/data, descrição, coordenadas GPS, seção "Pode ser o mesmo pet?" com similares da IA, botão "Encontrei!" (visível apenas para o dono) |
+| 6 | Cadastrar pet | Registrar novo pet perdido | Câmera/galeria, campos nome/espécie/raça/cor/sexo/descrição, seleção de bairro, captura de GPS, validação automática de foto por IA |
+| 7 | Pets por bairro | Listagem geográfica agrupada por bairro | Seções expansíveis por bairro com contador, indicadores de status (ponto vermelho=perdido, verde=encontrado), navegação para detalhe do pet |
+| 8 | Busca e filtros | Encontrar pets por cidade e espécie | Seletor de cidade, seletor de espécie, botão buscar, lista de resultados com cards, estados vazios |
+| 9 | Meus pets | Visualizar pets cadastrados pelo usuário logado | Cartões de estatísticas (total/perdidos/encontrados), chips de filtro por status, lista de pets, pull-to-refresh, estado vazio com CTA |
 | 10 | Perfil | Visualizar e editar dados do usuário | Avatar, nome, email, estatísticas, edição de telefone e senha, logout |
 
 **3. Principais ações do usuário:**
-- Cadastrar pet perdido com foto, localização e CEP
+- Cadastrar pet perdido com foto, localização GPS e bairro
 - Marcar pet como encontrado
-- Visualizar ocorrências no mapa
-- Filtrar pets por espécie, cidade ou status
-- Contatar o dono do pet via WhatsApp ou ligação
-- Editar dados do próprio perfil
+- Visualizar ocorrências agrupadas por bairro
+- Filtrar pets por espécie no feed
+- Buscar pets por cidade e espécie
+- Editar nome e telefone no perfil
 
 **4. MVP (Mínimo Produto Viável):**
 - Login e cadastro de usuário
-- Cadastro de pet perdido com GPS e CEP
-- Feed com lista de pets
-- Mapa com pins georreferenciados
+- Cadastro de pet perdido com foto (validada por IA), GPS e bairro
+- Feed com lista de pets e filtro por espécie
+- Listagem de ocorrências agrupadas por bairro
 - Marcar pet como encontrado
 
 **5. Relação com a problemática:**
@@ -419,9 +421,10 @@ Essa decisão é intencional: ampliar o alcance da informação sobre pets perdi
 | **React Native** | Framework para desenvolvimento mobile multiplataforma (iOS e Android) com JavaScript | https://reactnative.dev |
 | **Expo (SDK 54)** | Plataforma que simplifica o desenvolvimento React Native, eliminando configurações nativas | https://docs.expo.dev |
 | **Expo Go** | App para testar o projeto em dispositivo físico via QR code, sem publicar na loja | https://expo.dev/go |
-| **React Navigation** | Biblioteca de navegação entre telas (Stack Navigator + Bottom Tab Navigator) | https://reactnavigation.org |
-| **expo-location** | Captura coordenadas GPS do dispositivo e realiza geocoding reverso | https://docs.expo.dev/versions/latest/sdk/location |
+| **expo-router** | Roteamento baseado em arquivos para Expo — gera Stack Navigator e Bottom Tab Navigator automaticamente a partir da estrutura de pastas `app/` | https://docs.expo.dev/router/introduction |
+| **expo-location** | Captura coordenadas GPS do dispositivo | https://docs.expo.dev/versions/latest/sdk/location |
 | **expo-image-picker** | Acesso à câmera e galeria para upload de fotos dos pets | https://docs.expo.dev/versions/latest/sdk/imagepicker |
+| **expo-file-system** | Leitura de arquivos para conversão em base64 (envio de foto para validação da IA) | https://docs.expo.dev/versions/latest/sdk/filesystem |
 | **@supabase/supabase-js** | Cliente oficial do Supabase para autenticação e acesso ao banco | https://supabase.com/docs/reference/javascript |
 | **@react-native-async-storage** | Persistência da sessão do usuário entre fechamentos do app | https://react-native-async-storage.github.io |
 | **axios** | Cliente HTTP para consumo da API REST | https://axios-http.com/docs/intro |
