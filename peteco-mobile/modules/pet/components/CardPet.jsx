@@ -1,34 +1,16 @@
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, shadow, font } from '../../../constants/theme';
-
-function isoParaPtBR(iso) {
-  if (!iso) return null;
-  const [a, m, d] = iso.split('T')[0].split('-');
-  return `${d}/${m}/${a}`;
-}
-
-function primeiraFoto(fotoUrl) {
-  if (!fotoUrl) return null;
-  try {
-    const parsed = JSON.parse(fotoUrl);
-    return Array.isArray(parsed) ? parsed[0] ?? null : fotoUrl;
-  } catch {
-    return fotoUrl;
-  }
-}
-
-function EspecieIcon({ especie, size = 32, color }) {
-  const cor = color ?? colors.primary;
-  if (especie === 'cachorro') return <MaterialCommunityIcons name="dog" size={size} color={cor} />;
-  if (especie === 'gato')     return <MaterialCommunityIcons name="cat" size={size} color={cor} />;
-  return <Ionicons name="paw-outline" size={size} color={cor} />;
-}
+import { useParseFoto } from '../../../shared/hooks/useParseFoto';
+import { useFormatarData } from '../../../shared/hooks/useFormatarData';
+import EspecieIcon from '../../../shared/components/EspecieIcon';
 
 export default function CardPet({ pet, notificacoes = 0 }) {
   const router  = useRouter();
   const perdido = pet.status === 'perdido';
+  const { primeiraFoto } = useParseFoto();
+  const { isoParaPtBR }  = useFormatarData();
 
   return (
     <TouchableOpacity

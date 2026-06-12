@@ -1,12 +1,14 @@
 import {
   View, Text, FlatList, TouchableOpacity,
-  StyleSheet, ActivityIndicator, RefreshControl,
+  StyleSheet, RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import CardPet from '../../modules/pet/components/CardPet';
 import { colors, radius, font, shadow } from '../../constants/theme';
 import useMeusPetsController from '../../modules/pet/controller/useMeusPetsController';
+import LoadingCentro from '../../shared/components/LoadingCentro';
+import EmptyState from '../../shared/components/EmptyState';
 
 export default function MeusPets() {
   const router = useRouter();
@@ -15,13 +17,7 @@ export default function MeusPets() {
     filtro, setFiltro, stats, onRefresh,
   } = useMeusPetsController(() => router.replace('/(auth)/login'));
 
-  if (loading) {
-    return (
-      <View style={s.centro}>
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
-    );
-  }
+  if (loading) return <LoadingCentro />;
 
   return (
     <View style={s.container}>
@@ -78,17 +74,12 @@ export default function MeusPets() {
           </View>
         )}
         ListEmptyComponent={
-          <View style={s.vazio}>
-            <Ionicons name="paw-outline" size={48} color={colors.textLight} />
-            <Text style={s.vazioTexto}>Nenhum pet cadastrado</Text>
-            <TouchableOpacity
-              style={s.btnCadastrar}
-              onPress={() => router.push('/(tabs)/cadastrar')}
-            >
-              <Ionicons name="add-circle-outline" size={16} color="#fff" />
-              <Text style={s.btnCadastrarTexto}>Cadastrar pet perdido</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            icon="paw-outline"
+            title="Nenhum pet cadastrado"
+            action={() => router.push('/(tabs)/cadastrar')}
+            actionLabel="Cadastrar pet perdido"
+          />
         }
       />
     </View>
@@ -98,12 +89,6 @@ export default function MeusPets() {
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  centro: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: colors.background,
   },
   lista: {
@@ -171,30 +156,5 @@ const s = StyleSheet.create({
     fontSize: 14,
     color: colors.textMid,
     marginBottom: 12,
-  },
-  vazio: {
-    alignItems: 'center',
-    paddingTop: 40,
-    gap: 12,
-  },
-  vazioTexto: {
-    fontSize: 16,
-    ...font.bold,
-    color: colors.textDark,
-  },
-  btnCadastrar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.primary,
-    borderRadius: radius.full,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    marginTop: 8,
-  },
-  btnCadastrarTexto: {
-    color: '#fff',
-    ...font.bold,
-    fontSize: 14,
   },
 });

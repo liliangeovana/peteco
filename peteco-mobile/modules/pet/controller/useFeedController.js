@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { listarPets, buscarNotificacoes } from '../model/petModel';
-import { obterSessao } from '../../auth/model/authModel';
+import { obterSessao, obterUsuario } from '../../auth/model/authModel';
 
 export default function useFeedController() {
   const [pets, setPets]               = useState([]);
@@ -10,6 +10,14 @@ export default function useFeedController() {
   const [categoria, setCategoria]     = useState('');
   const [busca, setBusca]             = useState('');
   const [notificacoes, setNotificacoes] = useState({});
+  const [bairroUsuario, setBairroUsuario] = useState('');
+
+  useEffect(() => {
+    obterUsuario().then(u => {
+      const b = u?.user_metadata?.bairro;
+      if (b) setBairroUsuario(b);
+    });
+  }, []);
 
   const carregarPets = useCallback(async (especie = categoria) => {
     try {
@@ -55,11 +63,21 @@ export default function useFeedController() {
     carregarPets(filtro);
   };
 
-  const petsFiltrados = pets.filter(p =>
-    busca === '' ||
-    p.nome?.toLowerCase().includes(busca.toLowerCase()) ||
-    p.bairro?.toLowerCase().includes(busca.toLowerCase())
-  );
+  const petsFiltrados = useMemo(() => {
+    let result = pets.filter(p =>
+      busca === '' ||
+      p.nome?.toLowerCase().includes(busca.toLowerCase()) ||
+      p.bairro?.toLowerCase().includes(busca.toLowerCase())
+    );
+    if (bairroUsuario) {
+      result = [...result].sort((a, b) => {
+        const am = a.bairro === bairroUsuario ? 0 : 1;
+        const bm = b.bairro === bairroUsuario ? 0 : 1;
+        return am - bm;
+      });
+    }
+    return result;
+  }, [pets, busca, bairroUsuario]);
 
   return {
     pets,
@@ -72,5 +90,6 @@ export default function useFeedController() {
     notificacoes,
     onRefresh,
     selecionarCategoria,
+    bairroUsuario,
   };
 }

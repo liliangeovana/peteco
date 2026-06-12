@@ -85,40 +85,66 @@ router.post('/validar-foto', autenticar, async (req, res) => {
   }
 });
 
-// POST /pets/buscar-similares — busca visual por similares usando Gemini (requer imagem)
+// POST /pets/buscar-similares — busca visual por similares (requer imagem)
 router.post('/buscar-similares', autenticar, async (req, res) => {
   try {
-    const { imagemBase64, especie, cor, raca, cidade } = req.body;
-    if (!imagemBase64) return res.status(400).json({ erro: 'imagemBase64 é obrigatório' });
+    const { imagemBase64, fotoUrl, petId, cidade } = req.body;
+    if (!imagemBase64 && !fotoUrl) return res.status(400).json({ erro: 'imagemBase64 ou fotoUrl é obrigatório' });
 
     let query = supabase
       .from('pets_perdidos')
       .select('id, nome, especie, raca, cor, foto_url, bairro, cidade, status')
       .eq('status', 'perdido');
 
-    if (especie) query = query.eq('especie', especie);
-    if (cidade)  query = query.eq('cidade', cidade);
+    if (petId) query = query.neq('id', petId);
+    if (cidade) query = query.eq('cidade', cidade);
 
-    const { data: candidatos } = await query.limit(10);
+    const { data: candidatos } = await query.limit(8);
     if (!candidatos?.length) {
       return res.json({ mensagem: '0 pet(s) similar(es) encontrado(s).', status: 200, data: [] });
     }
 
-    const listaPets = candidatos
-      .map((p, i) => `${i + 1}. id="${p.id}" nome="${p.nome}" especie="${p.especie}" raca="${p.raca || '?'}" cor="${p.cor || '?'}" cidade="${p.cidade || '?'}"`)
-      .join('\n');
+    const urlFotoBusca = fotoUrl || toDataUrl(imagemBase64);
+
+    function parsePrimeiraFoto(foto_url) {
+      if (!foto_url) return null;
+      try {
+        const parsed = JSON.parse(foto_url);
+        return Array.isArray(parsed) ? (parsed[0] || null) : foto_url;
+      } catch {
+        return foto_url;
+      }
+    }
+
+    // filtra apenas candidatos que têm foto — sem foto não há comparação visual
+    const candidatosComFoto = candidatos.filter(p => !!parsePrimeiraFoto(p.foto_url));
+
+    if (!candidatosComFoto.length) {
+      return res.json({ mensagem: '0 pet(s) similar(es) encontrado(s).', status: 200, data: [] });
+    }
+
+    const content = [
+      { type: 'text', text: 'IMAGEM 0: foto do pet sendo buscado.' },
+      { type: 'image_url', image_url: { url: urlFotoBusca } },
+    ];
+
+    const listaPets = candidatosComFoto.map((p, i) => {
+      const primeiraFoto = parsePrimeiraFoto(p.foto_url);
+      content.push({ type: 'text', text: `IMAGEM ${i + 1}: candidato ${i + 1}.` });
+      content.push({ type: 'image_url', image_url: { url: primeiraFoto } });
+      return `${i + 1}. id="${p.id}"`;
+    }).join('\n');
+
+    content.push({
+      type: 'text',
+      text: `Você é um sistema de busca visual de pets. Compare a IMAGEM 0 com cada uma das imagens 1 a ${candidatosComFoto.length} usando SOMENTE características visuais: cor da pelagem, padrão (sólido, manchado, listrado, bicolor), formato do rosto e porte. IGNORE completamente raça, espécie ou qualquer texto — olhe apenas para as fotos.\n\nAtribua um score de 1 a 10 para cada candidato (10 = cópia idêntica, 7+ = mesma cor e padrão, 4-6 = alguma semelhança, 1-3 = completamente diferente).\n\nRetorne APENAS JSON array sem markdown. Inclua todos os candidatos com score >= 5. Se nenhum tiver score >= 5, retorne [].\nFormato: [{"id":"uuid_exato","score":number,"justificativa":"frase curta"}]\n\nIDs dos candidatos:\n${listaPets}`,
+    });
 
     console.log('[buscar-similares] chamando Groq...');
     const result = await comTimeout(
       groq.chat.completions.create({
         model: VISION_MODEL,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image_url', image_url: { url: toDataUrl(imagemBase64) } },
-            { type: 'text', text: `Esta foto é de um pet: especie="${especie || '?'}", cor="${cor || '?'}", raca="${raca || '?'}". Compare visualmente e por atributos com os pets cadastrados abaixo. Retorne APENAS JSON array sem markdown com os até 3 mais similares (score >= 5, escala 1-10): [{"id":"uuid_exato","score":number,"justificativa":"frase curta em português"}]. Se nenhum tiver score >= 5, retorne []. Pets cadastrados:\n${listaPets}` },
-          ],
-        }],
+        messages: [{ role: 'user', content }],
         max_tokens: 500,
       }),
       50000,
@@ -132,10 +158,11 @@ router.post('/buscar-similares', autenticar, async (req, res) => {
       .filter(s => s.score >= 5)
       .slice(0, 3)
       .map(s => ({
-        pet: candidatos.find(c => c.id === s.id),
+        pet: candidatosComFoto.find(c => c.id === s.id),
         score: s.score,
         justificativa: s.justificativa,
-      }));
+      }))
+      .filter(r => r.pet);
 
     res.json({ data: resultado });
   } catch (err) {
@@ -235,7 +262,7 @@ router.post('/', autenticar, async (req, res) => {
   try {
     const { nome, especie, raca, cor, descricao,
             latitude, longitude, endereco, bairro, cidade,
-            foto_url, data_perda } = req.body;
+            foto_url, data_perda, recompensa, valor_recompensa, contatos } = req.body;
 
     const { data, error } = await supabase
       .from('pets_perdidos')
@@ -244,6 +271,9 @@ router.post('/', autenticar, async (req, res) => {
         nome, especie, raca, cor, descricao,
         foto_url, data_perda, endereco, bairro, cidade,
         localizacao: latitude && longitude ? `POINT(${longitude} ${latitude})` : null,
+        recompensa: recompensa ?? false,
+        valor_recompensa: valor_recompensa ?? null,
+        contatos: contatos ?? null,
       })
       .select()
       .single();
@@ -327,10 +357,13 @@ router.patch('/:id/avistamentos/marcar-vistos', autenticar, async (req, res) => 
 // PUT /pets/:id — edita dados do pet (requer sessão e ser dono)
 router.put('/:id', autenticar, async (req, res) => {
   try {
-    const { nome, especie, raca, cor, descricao, bairro, data_perda, foto_url } = req.body;
+    const { nome, especie, raca, cor, descricao, bairro, data_perda, foto_url, recompensa, valor_recompensa, contatos } = req.body;
     const { data, error } = await supabase
       .from('pets_perdidos')
-      .update({ nome, especie, raca, cor, descricao, bairro, data_perda, foto_url, atualizado_em: new Date() })
+      .update({ nome, especie, raca, cor, descricao, bairro, data_perda, foto_url,
+                recompensa: recompensa ?? false, valor_recompensa: valor_recompensa ?? null,
+                contatos: contatos ?? null,
+                atualizado_em: new Date() })
       .eq('id', req.params.id)
       .eq('usuario_id', req.usuario.id)
       .select()

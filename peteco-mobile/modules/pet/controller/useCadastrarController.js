@@ -4,12 +4,13 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { BAIRROS_BOA_VISTA, OPCAO_OUTRO, bairroMaisProximo } from '../../../constants/bairros';
 import { SEM_RACA } from '../../../constants/racas';
-import { validarFoto, buscarSimilares, criarPet, uploadFoto, lerBase64 } from '../model/petModel';
+import { validarFoto, criarPet, uploadFoto, lerBase64 } from '../model/petModel';
 import { obterSessao } from '../../auth/model/authModel';
 
 export default function useCadastrarController(onSuccess) {
   const [form, setForm] = useState({
     nome: '', especie: '', raca: '', cor: '', descricao: '',
+    recompensa: false, valorRecompensa: '',
   });
   const [dataPerda, setDataPerda] = useState(null);
   const [bairroSelecionado, setBairroSelecionado] = useState('');
@@ -22,8 +23,31 @@ export default function useCadastrarController(onSuccess) {
   const [coords, setCoords]                       = useState(null);
   const [buscandoGps, setBuscandoGps]             = useState(false);
   const [enviando, setEnviando]                   = useState(false);
+  const [contatoAtivado, setContatoAtivado]       = useState(false);
+  const [contatos, setContatos]                   = useState([]);
 
-  const set = (campo, valor) => setForm(f => ({ ...f, [campo]: valor }));
+  const toggleContatoAtivado = (val) => {
+    setContatoAtivado(val);
+    if (val) {
+      setContatos(c => c.length === 0 ? [{ tipo: 'whatsapp', valor: '' }] : c);
+    } else {
+      setContatos([]);
+    }
+  };
+
+  const set = (campo, valor) => {
+    if (campo === 'recompensa' && !valor) {
+      setForm(f => ({ ...f, recompensa: false, valorRecompensa: '' }));
+    } else {
+      setForm(f => ({ ...f, [campo]: valor }));
+    }
+  };
+
+  const adicionarContato = () => setContatos(c => [...c, { tipo: 'whatsapp', valor: '' }]);
+  const removerContato = (idx) => setContatos(c => c.filter((_, i) => i !== idx));
+  const atualizarContato = (idx, campo, valor) => setContatos(c => {
+    const n = [...c]; n[idx] = { ...n[idx], [campo]: valor }; return n;
+  });
 
   const selecionarRaca = (raca) => {
     setRacaSelecionada(raca);
@@ -125,30 +149,15 @@ export default function useCadastrarController(onSuccess) {
     }
   };
 
-  const verificarSimilares = async () => {
-    const base64Principal = fotosBase64[0];
-    if (!base64Principal || !fotosValidadas[0]) return;
-    try {
-      const session = await obterSessao();
-      await buscarSimilares({
-        imagemBase64: base64Principal,
-        especie: form.especie,
-        cor: form.cor,
-        raca: form.raca,
-        cidade: 'Boa Vista',
-      }, session?.access_token);
-    } catch (err) {
-      console.warn('[verificarSimilares]', err?.message);
-    }
-  };
-
   const resetarFormulario = () => {
-    setForm({ nome: '', especie: '', raca: '', cor: '', descricao: '' });
+    setForm({ nome: '', especie: '', raca: '', cor: '', descricao: '', recompensa: false, valorRecompensa: '' });
     setDataPerda(null);
     setBairroSelecionado('');
     setBairroOutro('');
     setRacaSelecionada('');
     setCoords(null);
+    setContatoAtivado(false);
+    setContatos([]);
     resetFotos();
   };
 
@@ -168,8 +177,6 @@ export default function useCadastrarController(onSuccess) {
     }
     setEnviando(true);
     try {
-      verificarSimilares(); // roda em background, sem bloquear
-
       const session = await obterSessao();
       let foto_url = null;
       if (fotos.length > 0) {
@@ -180,6 +187,10 @@ export default function useCadastrarController(onSuccess) {
       const latBairro = coords?.latitude  ?? BAIRROS_BOA_VISTA.find(b => b.nome === bairroSelecionado)?.lat;
       const lngBairro = coords?.longitude ?? BAIRROS_BOA_VISTA.find(b => b.nome === bairroSelecionado)?.lng;
 
+      const contatosFiltrados = contatoAtivado
+        ? contatos.filter(c => c.valor.trim())
+        : [];
+
       const novoPet = await criarPet(
         {
           ...form,
@@ -189,6 +200,9 @@ export default function useCadastrarController(onSuccess) {
           foto_url,
           latitude: latBairro,
           longitude: lngBairro,
+          recompensa: form.recompensa,
+          valor_recompensa: form.recompensa && form.valorRecompensa ? parseFloat(form.valorRecompensa) : null,
+          contatos: contatosFiltrados.length > 0 ? JSON.stringify(contatosFiltrados) : null,
         },
         session?.access_token,
       );
@@ -224,5 +238,11 @@ export default function useCadastrarController(onSuccess) {
     removerFoto,
     obterGps,
     enviar,
+    contatoAtivado,
+    setContatoAtivado: toggleContatoAtivado,
+    contatos,
+    adicionarContato,
+    removerContato,
+    atualizarContato,
   };
 }

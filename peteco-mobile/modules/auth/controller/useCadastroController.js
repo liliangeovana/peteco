@@ -8,11 +8,16 @@ export default function useCadastroController(onSuccess, onIrParaLogin) {
   const [email, setEmail]       = useState('');
   const [telefone, setTelefone] = useState('');
   const [senha, setSenha]       = useState('');
+  const [bairro, setBairro]     = useState('');
   const [loading, setLoading]   = useState(false);
 
   const handleCadastro = async () => {
     if (!nome || !email || !senha) {
       Alert.alert('Preencha nome, e-mail e senha');
+      return;
+    }
+    if (!bairro) {
+      Alert.alert('Bairro obrigatório', 'Selecione o bairro onde você mora.');
       return;
     }
     if (senha.length < 6) {
@@ -21,7 +26,7 @@ export default function useCadastroController(onSuccess, onIrParaLogin) {
     }
     setLoading(true);
     try {
-      const data = await cadastrarModel(email, senha, nome, telefone);
+      const data = await cadastrarModel(email, senha, nome, telefone, bairro);
       if (data.session) {
         onSuccess?.();
       } else {
@@ -38,15 +43,12 @@ export default function useCadastroController(onSuccess, onIrParaLogin) {
   };
 
   return {
-    nome,
-    setNome,
-    email,
-    setEmail,
-    telefone,
-    setTelefone,
-    senha,
-    setSenha,
+    nome, setNome,
+    email, setEmail,
+    telefone, setTelefone,
+    senha, setSenha,
+    bairro, setBairro,
     loading,
-    handleCadastro
+    handleCadastro,
   };
 }

@@ -94,7 +94,7 @@ export async function excluirPet(id, accessToken) {
 export async function uploadFoto(uri) {
   const file = new File(uri);
   const bytes = await file.bytes();
-  const nome = `pets/${Date.now()}.jpg`;
+  const nome = `pets/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
   const { error } = await supabase.storage
     .from('fotos-pets')
     .upload(nome, bytes, { contentType: 'image/jpeg' });

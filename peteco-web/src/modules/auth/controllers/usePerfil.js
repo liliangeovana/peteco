@@ -5,7 +5,7 @@ export function usePerfil() {
   const { verificarSessao } = useAuth()
 
   /**
-   * @param {{ nome?: string, telefone?: string, senha?: string }} dados
+   * @param {{ nome?: string, telefone?: string, bairro?: string, senha?: string }} dados
    */
   async function atualizarPerfil(dados) {
     await http.patch('/auth/perfil', dados)

@@ -1,6 +1,6 @@
 # 🐾 PETECO
 
-Plataforma de monitoramento de pets perdidos com geolocalização, heatmaps e IA.
+Plataforma de monitoramento de pets perdidos com geolocalização e validação de fotos por IA.
 
 ---
 
@@ -8,10 +8,9 @@ Plataforma de monitoramento de pets perdidos com geolocalização, heatmaps e IA
 
 ```
 peteco/
-├── peteco-api/       Node.js + Express  — API REST, sessão/cookie, Anthropic Vision
-├── peteco-mobile/    React Native + Expo — App do cidadão (10 telas)
-├── peteco-web/       Vue 3 + Vite        — Painel B2G (10 telas)
-└── peteco-ia/        Python + Flask      — Microsserviço DBSCAN
+├── peteco-api/       Node.js + Express  — API REST, sessão/cookie, validação de foto via Groq
+├── peteco-mobile/    React Native + Expo — App do cidadão
+└── peteco-web/       Vue 3 + Vite        — Painel web
 ```
 
 ---
@@ -21,7 +20,6 @@ peteco/
 | Ferramenta | Versão mínima | Download |
 |-----------|--------------|---------|
 | Node.js   | 18+          | https://nodejs.org |
-| Python    | 3.10+        | https://python.org |
 | Expo CLI  | via npx      | — |
 
 ---
@@ -37,20 +35,19 @@ npm install
 
 ### Configurar variáveis de ambiente
 
-Crie o arquivo `.env` (já existe no projeto) e preencha:
+Crie o arquivo `.env` e preencha:
 
 ```env
 SUPABASE_URL=https://SEU_PROJETO.supabase.co
 SUPABASE_SERVICE_KEY=sua_service_role_key_aqui
-ANTHROPIC_API_KEY=sua_chave_anthropic_aqui
-IA_SERVICE_URL=http://localhost:5000
+GROQ_API_KEY=sua_chave_groq_aqui
 FRONTEND_URL=http://localhost:5858
 SESSION_SECRET=uma_string_secreta_longa
 PORT=3001
 ```
 
 > A `SUPABASE_SERVICE_KEY` é a chave **service_role** (não a anon key).  
-> A `ANTHROPIC_API_KEY` é necessária para validação de foto e busca de similares.
+> A `GROQ_API_KEY` é necessária para validação de foto via visão computacional.
 
 ### Rodar
 
@@ -99,7 +96,7 @@ Escaneie o QR code com o app **Expo Go** (Android/iOS) ou pressione:
 
 ---
 
-## 3. peteco-web — Dashboard Vue 3
+## 3. peteco-web — Painel Vue 3
 
 ### Instalação
 
@@ -132,70 +129,24 @@ npm run build
 
 ---
 
-## 4. peteco-ia — Microsserviço Python
-
-### Instalação
-
-```bash
-cd peteco-ia
-
-# Criar ambiente virtual (recomendado)
-py -m venv venv
-
-# Ativar — Windows
-venv\Scripts\activate
-
-# Ativar — Linux/Mac
-source venv/bin/activate
-
-# Instalar dependências
-pip install -r requirements.txt
-```
-
-### Configurar variáveis de ambiente
-
-Edite o `.env`:
-
-```env
-SUPABASE_URL=https://SEU_PROJETO.supabase.co
-SUPABASE_SERVICE_KEY=sua_service_role_key_aqui
-```
-
-> Usa a mesma `service_role_key` do backend Node.
-
-### Rodar
-
-```bash
-# Com o venv ativado:
-python app.py
-```
-
-Serviço disponível em `http://localhost:5000`
-
----
-
 ## Rodando tudo junto
 
-Abra **4 terminais** e execute cada comando em um deles:
+Abra **3 terminais** e execute cada comando em um deles:
 
 ```bash
 # Terminal 1 — API
 cd peteco-api && npm run dev
 
-# Terminal 2 — IA
-cd peteco-ia && venv\Scripts\activate && python app.py
-
-# Terminal 3 — Web
+# Terminal 2 — Web
 cd peteco-web && npm run dev
 
-# Terminal 4 — Mobile (opcional)
+# Terminal 3 — Mobile (opcional)
 cd peteco-mobile && npx expo start
 ```
 
 | Serviço | URL |
 |---------|-----|
 | API Node | http://localhost:3001 |
-| IA Python | http://localhost:5000 |
 | Web Vue | http://localhost:5858 |
 | Mobile | Expo Go via QR code |
 
@@ -203,10 +154,7 @@ cd peteco-mobile && npx expo start
 
 ## Verificar se tudo está funcionando
 
-Acesse estes URLs no navegador para confirmar cada serviço:
-
 - **API:** `http://localhost:3001/health` → `{"status":"ok"}`
-- **IA:** `http://localhost:5000/health` → `{"status":"ok"}`
 - **Web:** `http://localhost:5858` → tela de login
 - **Mobile:** QR code no terminal do Expo
 
@@ -214,6 +162,5 @@ Acesse estes URLs no navegador para confirmar cada serviço:
 
 ## Observações
 
-- O `peteco-ia` é necessário apenas para as telas **Clusters** e **Dashboard/Análise** do painel web. As outras telas funcionam sem ele.
 - As rotas `/pets` (POST), `/pets/:id/encontrado` (PATCH) e `/auth/perfil` (PATCH) exigem sessão ativa — faça login primeiro.
 - Em produção, o `cookie.secure` no backend deve ser `true` (requer HTTPS).

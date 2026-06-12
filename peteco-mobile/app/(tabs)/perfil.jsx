@@ -3,13 +3,23 @@ import {
   StyleSheet, ActivityIndicator,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, font, shadow } from '../../constants/theme';
+import { BAIRROS_BOA_VISTA, OPCAO_OUTRO } from '../../constants/bairros';
 import usePerfilController from '../../modules/perfil/controller/usePerfilController';
+import { useMascaraTelefone } from '../../shared/hooks/useMascaraTelefone';
+import SelectModal from '../../shared/components/SelectModal';
+import LoadingCentro from '../../shared/components/LoadingCentro';
+
+const OPCOES_BAIRRO = [...BAIRROS_BOA_VISTA.map(b => b.nome), OPCAO_OUTRO];
 
 export default function Perfil() {
   const router = useRouter();
+  const { mascaraTelefone } = useMascaraTelefone();
+  const [modalBairro, setModalBairro] = useState(false);
+  const [bairroOutro, setBairroOutro] = useState('');
   const {
     usuario, perfil, setPerfil,
     loading, salvando, editando, setEditando,
@@ -19,13 +29,7 @@ export default function Perfil() {
     () => router.replace('/(auth)/splash'),
   );
 
-  if (loading) {
-    return (
-      <View style={s.centro}>
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
-    );
-  }
+  if (loading) return <LoadingCentro />;
 
   const inicial = perfil.nome?.charAt(0)?.toUpperCase() || '?';
 
@@ -74,12 +78,48 @@ export default function Perfil() {
           <TextInput
             style={[s.input, !editando && s.inputReadOnly]}
             value={perfil.telefone}
-            onChangeText={v => setPerfil(p => ({ ...p, telefone: v }))}
-            placeholder="(95) 98765-4321"
+            onChangeText={v => setPerfil(p => ({ ...p, telefone: mascaraTelefone(v) }))}
+            placeholder="95 99999-9999"
             placeholderTextColor={colors.textLight}
             keyboardType="phone-pad"
             editable={editando}
           />
+        </View>
+
+        <View style={s.campo}>
+          <Text style={s.label}>Bairro</Text>
+          {editando ? (
+            <>
+              <TouchableOpacity
+                style={[s.input, s.selectBtn]}
+                onPress={() => setModalBairro(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={perfil.bairro ? s.selectTexto : s.selectPlaceholder}>
+                  {perfil.bairro || 'Selecione o bairro'}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color={colors.textLight} />
+              </TouchableOpacity>
+              {perfil.bairro === OPCAO_OUTRO && (
+                <TextInput
+                  style={[s.input, { marginTop: 6 }]}
+                  value={bairroOutro}
+                  onChangeText={v => {
+                    setBairroOutro(v);
+                    setPerfil(p => ({ ...p, bairro: v }));
+                  }}
+                  placeholder="Digite o nome do bairro"
+                  placeholderTextColor={colors.textLight}
+                />
+              )}
+            </>
+          ) : (
+            <TextInput
+              style={[s.input, s.inputReadOnly]}
+              value={perfil.bairro || '—'}
+              editable={false}
+            />
+          )}
         </View>
 
         <View style={s.campo}>
@@ -120,6 +160,18 @@ export default function Perfil() {
 
       <View style={{ height: 40 }} />
     </ScrollView>
+    <SelectModal
+      visible={modalBairro}
+      title="Selecione o bairro"
+      data={OPCOES_BAIRRO}
+      value={perfil.bairro}
+      onSelect={item => {
+        setPerfil(p => ({ ...p, bairro: item }));
+        if (item !== OPCAO_OUTRO) setBairroOutro('');
+        setModalBairro(false);
+      }}
+      onClose={() => setModalBairro(false)}
+    />
     </KeyboardAvoidingView>
   );
 }
@@ -132,12 +184,6 @@ const s = StyleSheet.create({
   container: {
     padding: 20,
     paddingTop: 56,
-  },
-  centro: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
   },
   avatarArea: {
     alignItems: 'center',
@@ -268,5 +314,18 @@ const s = StyleSheet.create({
     color: colors.danger,
     fontSize: 15,
     ...font.bold,
+  },
+  selectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  selectTexto: {
+    fontSize: 14,
+    color: colors.textDark,
+  },
+  selectPlaceholder: {
+    fontSize: 14,
+    color: colors.textLight,
   },
 });

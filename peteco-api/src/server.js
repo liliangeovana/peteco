@@ -4,7 +4,6 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import petsRouter from './routes/pets.js';
-import analiseRouter from './routes/analise.js';
 import authRouter from './routes/auth.js';
 
 dotenv.config();
@@ -44,7 +43,6 @@ app.use(session({
 
 app.use('/auth', authRouter);
 app.use('/pets', petsRouter);
-app.use('/analise', analiseRouter);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 

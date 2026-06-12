@@ -9,7 +9,7 @@ export async function buscarPerfil(userId) {
   return data;
 }
 
-export async function salvarPerfil(userId, nome, telefone) {
-  await supabase.from('perfis').upsert({ id: userId, nome, telefone });
-  await supabase.auth.updateUser({ data: { nome } });
+export async function salvarPerfil(userId, nome, telefone, bairro) {
+  await supabase.from('perfis').upsert({ id: userId, nome, telefone, bairro: bairro || null });
+  await supabase.auth.updateUser({ data: { nome, bairro: bairro || null } });
 }

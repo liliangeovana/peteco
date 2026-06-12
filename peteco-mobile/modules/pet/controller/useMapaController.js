@@ -1,10 +1,19 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { listarPets } from '../model/petModel';
+import { obterUsuario } from '../../auth/model/authModel';
 
 export default function useMapaController() {
-  const [pets, setPets]       = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [pets, setPets]               = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [bairroUsuario, setBairroUsuario] = useState('');
+
+  useEffect(() => {
+    obterUsuario().then(u => {
+      const b = u?.user_metadata?.bairro;
+      if (b) setBairroUsuario(b);
+    });
+  }, []);
 
   useFocusEffect(useCallback(() => {
     setLoading(true);
@@ -14,5 +23,5 @@ export default function useMapaController() {
       .finally(() => setLoading(false));
   }, []));
 
-  return { pets, loading };
+  return { pets, loading, bairroUsuario };
 }

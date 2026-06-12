@@ -1,13 +1,17 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute, RouterLink, RouterView } from 'vue-router'
 import { useAuth } from './modules/auth/controllers/useAuth.js'
 import {
-  PawPrint, LayoutList, BarChart2, List, User, LogOut,
+  PawPrint, LayoutList, Plus, List, User, LogOut, Map,
 } from 'lucide-vue-next'
 
 const route = useRoute()
-const { usuario, logout } = useAuth()
+const { usuario, logout, verificarSessao } = useAuth()
+
+onMounted(() => {
+  if (usuario.value) verificarSessao()
+})
 
 const rotasPublicas = ['/', '/login', '/cadastro']
 const mostrarNav = computed(() => !rotasPublicas.includes(route.path))
@@ -29,11 +33,14 @@ const isConstrained = computed(() => !['/', '/login', '/cadastro'].includes(rout
         <RouterLink class="navbar-link" active-class="navbar-link-active" to="/feed">
           <LayoutList :size="15" /> Feed
         </RouterLink>
-        <RouterLink class="navbar-link" active-class="navbar-link-active" to="/analytics">
-          <BarChart2 :size="15" /> Analytics
+        <RouterLink class="navbar-link navbar-link-cadastrar" active-class="navbar-link-active" to="/cadastrar">
+          <Plus :size="15" /> Cadastrar
         </RouterLink>
-        <RouterLink class="navbar-link" active-class="navbar-link-active" to="/pets">
-          <List :size="15" /> Pets
+        <RouterLink class="navbar-link" active-class="navbar-link-active" to="/meus-pets">
+          <List :size="15" /> Meus Pets
+        </RouterLink>
+        <RouterLink class="navbar-link" active-class="navbar-link-active" to="/mapa">
+          <Map :size="15" /> Mapa
         </RouterLink>
         <RouterLink class="navbar-link" active-class="navbar-link-active" to="/perfil">
           <User :size="15" /> Perfil

@@ -1,7 +1,7 @@
 import {
   View, Text, Image, ImageBackground, ScrollView, TouchableOpacity,
   StyleSheet, ActivityIndicator, useWindowDimensions, Dimensions,
-  Modal, TextInput, FlatList, KeyboardAvoidingView, Platform,
+  Modal, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -12,7 +12,13 @@ import { colors, radius, font, shadow } from '../../constants/theme';
 import { BAIRROS_BOA_VISTA, OPCAO_OUTRO } from '../../constants/bairros';
 import { RACAS, SEM_RACA } from '../../constants/racas';
 import useDetalhePetController from '../../modules/pet/controller/useDetalhePetController';
+import useCompartilharController from '../../modules/pet/controller/useCompartilharController';
+import PostSocialModal from '../../modules/pet/components/PostSocialModal';
 import DatePickerField from '../../shared/components/DatePickerField';
+import SelectModal from '../../shared/components/SelectModal';
+import LoadingCentro from '../../shared/components/LoadingCentro';
+import { useMascaraTelefone } from '../../shared/hooks/useMascaraTelefone';
+import { useFormatarData } from '../../shared/hooks/useFormatarData';
 
 const OPCOES_BAIRRO = [...BAIRROS_BOA_VISTA.map(b => b.nome), OPCAO_OUTRO];
 
@@ -32,16 +38,12 @@ function parseFotoUrls(fotoUrl) {
   }
 }
 
-function isoParaPtBR(iso) {
-  if (!iso) return '—';
-  const [a, m, d] = iso.split('T')[0].split('-');
-  return `${d}/${m}/${a}`;
-}
-
 export default function DetalhePet() {
   const { id }   = useLocalSearchParams();
   const router   = useRouter();
   const { width } = useWindowDimensions();
+  const { mascaraTelefone } = useMascaraTelefone();
+  const { isoParaPtBR }     = useFormatarData();
   const [fotoAtiva, setFotoAtiva]             = useState(0);
   const [modalAvist, setModalAvist]           = useState(false);
   const [modalBairro, setModalBairro]         = useState(false);
@@ -52,10 +54,23 @@ export default function DetalhePet() {
   const [modalEditar, setModalEditar]         = useState(false);
   const [modalBairroEdit, setModalBairroEdit] = useState(false);
   const [modalRacaEdit, setModalRacaEdit]     = useState(false);
+  const [modalPost, setModalPost]             = useState(false);
+
+  const {
+    template, setTemplate,
+    campos, toggleCampo,
+    overrides, atualizarOverride,
+    contatoNomes, atualizarContatoNome,
+    contatoAvulso, atualizarContatoAvulso,
+    contatosExtras, adicionarContatoExtra, removerContatoExtra, atualizarContatoExtra,
+    ocultarInstaNoPost, setOcultarInstaNoPost,
+    inicializarComPet,
+    gerando, gerarECompartilhar,
+    shotRef,
+  } = useCompartilharController();
 
   const {
     pet, loading, usuario, salvando,
-    similares, loadingSimilares,
     avistamentos, loadingAvist,
     formAvist, setAvist,
     bairroAvistSel, setBairroAvistSel,
@@ -73,15 +88,11 @@ export default function DetalhePet() {
     selecionarEspecieEdit,
     salvandoEdicao, salvarEdicao, iniciarEditar,
     excluindo, confirmarExcluir,
+    contatoEditAtivado, setContatoEditAtivado,
+    contatosEdit, adicionarContatoEdit, removerContatoEdit, atualizarContatoEdit,
   } = useDetalhePetController(id, () => router.back());
 
-  if (loading) {
-    return (
-      <View style={s.centro}>
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
-    );
-  }
+  if (loading) return <LoadingCentro />;
 
   const ehDono   = usuario?.id === pet?.usuario_id;
   const perdido  = pet?.status === 'perdido';
@@ -123,7 +134,7 @@ export default function DetalhePet() {
               }
             </View>
           )}
-          <TouchableOpacity style={s.btnVoltar} onPress={() => router.back()}>
+          <TouchableOpacity style={s.btnVoltar} onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/feed')}>
             <Ionicons name="arrow-back" size={20} color={colors.textDark} />
           </TouchableOpacity>
           <View style={[s.statusBadge, perdido ? s.badgePerdido : s.badgeEncontrado]}>
@@ -153,6 +164,15 @@ export default function DetalhePet() {
               </View>
               {ehDono && (
                 <TouchableOpacity
+                  style={s.btnShare}
+                  onPress={() => setModalPost(true)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="share-social-outline" size={17} color={colors.primary} />
+                </TouchableOpacity>
+              )}
+              {ehDono && (
+                <TouchableOpacity
                   style={s.btnAcoes}
                   onPress={() => setModalAcoes(true)}
                   activeOpacity={0.7}
@@ -177,6 +197,15 @@ export default function DetalhePet() {
                 <Text style={s.infoValor} numberOfLines={1}>{valor}</Text>
               </View>
             ))}
+            {pet.recompensa && (
+              <View style={[s.infoCard, { backgroundColor: '#FFF7E6', borderWidth: 1, borderColor: '#F59E0B' }]}>
+                <Ionicons name="gift-outline" size={18} color="#F59E0B" style={{ marginBottom: 4 }} />
+                <Text style={[s.infoLabel, { color: '#92400E' }]}>Recompensa</Text>
+                <Text style={[s.infoValor, { color: '#92400E' }]}>
+                  {pet.valor_recompensa ? `R$ ${pet.valor_recompensa}` : 'Sim'}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Descrição */}
@@ -186,6 +215,40 @@ export default function DetalhePet() {
               <Text style={s.descricaoTexto}>{pet.descricao}</Text>
             </View>
           ) : null}
+
+          {/* Contatos */}
+          {(() => {
+            let contatosData = [];
+            try { contatosData = JSON.parse(pet.contatos || '[]'); if (!Array.isArray(contatosData)) contatosData = []; } catch {}
+            if (contatosData.length === 0) return null;
+            return (
+              <View style={s.contatosCard}>
+                <Text style={s.contatosTitulo}>Entre em contato</Text>
+                {contatosData.map((c, idx) => (
+                  <View key={idx} style={s.contatoItem}>
+                    <View style={[s.contatoIcone,
+                      c.tipo === 'whatsapp' ? { backgroundColor: '#dcfce7' }
+                      : c.tipo === 'instagram' ? { backgroundColor: '#fce7f3' }
+                      : { backgroundColor: colors.primaryLight }
+                    ]}>
+                      {c.tipo === 'whatsapp'
+                        ? <Ionicons name="logo-whatsapp" size={18} color="#16a34a" />
+                        : c.tipo === 'instagram'
+                        ? <Ionicons name="logo-instagram" size={18} color="#db2777" />
+                        : <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.primary} />
+                      }
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.contatoTipoLabel}>
+                        {c.tipo === 'whatsapp' ? 'WhatsApp' : c.tipo === 'instagram' ? 'Instagram' : 'Contato'}
+                      </Text>
+                      <Text style={s.contatoValorTexto}>{c.tipo === 'whatsapp' ? mascaraTelefone(c.valor) : c.valor}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            );
+          })()}
 
           {/* Histórico de avistamentos */}
           {(loadingAvist || avistamentos.length > 0) && (
@@ -236,40 +299,6 @@ export default function DetalhePet() {
             </View>
           )}
 
-          {/* Pets similares */}
-          {(loadingSimilares || similares.length > 0) && (
-            <View style={s.similaresSecao}>
-              <Text style={s.similaresTitulo}>Pets similares na região</Text>
-              {loadingSimilares ? (
-                <ActivityIndicator color={colors.primary} style={{ marginTop: 8 }} />
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
-                  {similares.map(item => (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={s.similarCard}
-                      onPress={() => router.push(`/pet/${item.id}`)}
-                      activeOpacity={0.85}
-                    >
-                      {parseFotoUrls(item.foto_url)[0] ? (
-                        <Image source={{ uri: parseFotoUrls(item.foto_url)[0] }} style={s.similarFoto} />
-                      ) : (
-                        <View style={[s.similarFoto, s.similarFotoVazia]}>
-                          <Ionicons name="paw-outline" size={22} color={colors.primary} />
-                        </View>
-                      )}
-                      <View style={s.similarInfo}>
-                        <Text style={s.similarNome} numberOfLines={1}>{item.nome}</Text>
-                        <Text style={s.similarBairro} numberOfLines={1}>
-                          {item.bairro || '—'}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              )}
-            </View>
-          )}
           <View style={{ height: 100 }} />
         </View>
       </ScrollView>
@@ -303,6 +332,32 @@ export default function DetalhePet() {
           </TouchableOpacity>
         )}
       </View>
+
+      <PostSocialModal
+        visible={modalPost}
+        onClose={() => setModalPost(false)}
+        pet={pet}
+        shotRef={shotRef}
+        template={template}
+        setTemplate={setTemplate}
+        campos={campos}
+        toggleCampo={toggleCampo}
+        overrides={overrides}
+        atualizarOverride={atualizarOverride}
+        contatoNomes={contatoNomes}
+        atualizarContatoNome={atualizarContatoNome}
+        contatoAvulso={contatoAvulso}
+        atualizarContatoAvulso={atualizarContatoAvulso}
+        contatosExtras={contatosExtras}
+        adicionarContatoExtra={adicionarContatoExtra}
+        removerContatoExtra={removerContatoExtra}
+        atualizarContatoExtra={atualizarContatoExtra}
+        ocultarInstaNoPost={ocultarInstaNoPost}
+        setOcultarInstaNoPost={setOcultarInstaNoPost}
+        inicializarComPet={inicializarComPet}
+        gerando={gerando}
+        onGerar={gerarECompartilhar}
+      />
 
       {/* Modal de fotos dos anexos */}
       <Modal
@@ -455,81 +510,51 @@ export default function DetalhePet() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Modal select de bairro para avistamento */}
-      <Modal
+      <SelectModal
         visible={modalBairro}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setModalBairro(false)}
-      >
-        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setModalBairro(false)} />
-        <View style={s.modalSheet}>
-          <View style={s.modalHeader}>
-            <Text style={s.modalTitulo}>Selecione o bairro</Text>
-            <TouchableOpacity onPress={() => setModalBairro(false)}>
-              <Ionicons name="close" size={22} color={colors.textMid} />
+        title="Selecione o bairro"
+        data={OPCOES_BAIRRO}
+        value={bairroAvistSel}
+        onSelect={item => {
+          setBairroAvistSel(item);
+          if (item !== OPCAO_OUTRO) setBairroAvistOutro('');
+          setModalBairro(false);
+        }}
+        onClose={() => setModalBairro(false)}
+      />
+
+      {/* Popover de ações do dono */}
+      {modalAcoes && (
+        <>
+          <TouchableOpacity
+            style={s.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setModalAcoes(false)}
+          />
+          <View style={s.popover}>
+            <TouchableOpacity
+              style={s.acaoItem}
+              onPress={() => { setModalAcoes(false); iniciarEditar(); setModalEditar(true); }}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="create-outline" size={18} color={colors.textDark} />
+              <Text style={s.acaoTexto}>Editar informações</Text>
+            </TouchableOpacity>
+            <View style={s.acaoDivisor} />
+            <TouchableOpacity
+              style={s.acaoItem}
+              onPress={() => { setModalAcoes(false); confirmarExcluir(); }}
+              activeOpacity={0.75}
+              disabled={excluindo}
+            >
+              <Ionicons name="trash-outline" size={18} color={colors.danger} />
+              <Text style={[s.acaoTexto, { color: colors.danger }]}>
+                {excluindo ? 'Excluindo...' : 'Excluir pet'}
+              </Text>
             </TouchableOpacity>
           </View>
-          <FlatList
-            data={OPCOES_BAIRRO}
-            keyExtractor={item => item}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[s.modalItem, bairroAvistSel === item && s.modalItemAtivo]}
-                onPress={() => {
-                  setBairroAvistSel(item);
-                  if (item !== OPCAO_OUTRO) setBairroAvistOutro('');
-                  setModalBairro(false);
-                }}
-              >
-                <Text style={[s.modalItemTexto, bairroAvistSel === item && s.modalItemTextoAtivo]}>
-                  {item}
-                </Text>
-                {bairroAvistSel === item && (
-                  <Ionicons name="checkmark" size={18} color={colors.primary} />
-                )}
-              </TouchableOpacity>
-            )}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
-      </Modal>
-
-      {/* Modal de ações do dono */}
-      <Modal
-        visible={modalAcoes}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setModalAcoes(false)}
-      >
-        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setModalAcoes(false)} />
-        <View style={s.acoesSheet}>
-          <TouchableOpacity
-            style={s.acaoItem}
-            onPress={() => { setModalAcoes(false); iniciarEditar(); setModalEditar(true); }}
-            activeOpacity={0.75}
-          >
-            <Ionicons name="create-outline" size={20} color={colors.textDark} />
-            <Text style={s.acaoTexto}>Editar informações</Text>
-          </TouchableOpacity>
-          <View style={s.acaoDivisor} />
-          <TouchableOpacity
-            style={s.acaoItem}
-            onPress={() => { setModalAcoes(false); confirmarExcluir(); }}
-            activeOpacity={0.75}
-            disabled={excluindo}
-          >
-            <Ionicons name="trash-outline" size={20} color={colors.danger} />
-            <Text style={[s.acaoTexto, { color: colors.danger }]}>
-              {excluindo ? 'Excluindo...' : 'Excluir pet'}
-            </Text>
-          </TouchableOpacity>
-          <View style={s.acaoDivisor} />
-          <TouchableOpacity style={[s.acaoItem, { justifyContent: 'center' }]} onPress={() => setModalAcoes(false)}>
-            <Text style={[s.acaoTexto, { color: colors.textMid }]}>Cancelar</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
+        </>
+      )}
 
       {/* Modal de edição do pet */}
       <Modal
@@ -678,6 +703,76 @@ export default function DetalhePet() {
               multiline
             />
 
+            {/* Contatos */}
+            <Text style={[s.formLabel, { marginTop: 14 }]}>Contato para quem encontrar</Text>
+            <View style={s.editContatoToggle}>
+              {[{ valor: false, label: 'Não' }, { valor: true, label: 'Sim' }].map(({ valor, label }) => {
+                const ativo = contatoEditAtivado === valor;
+                return (
+                  <TouchableOpacity
+                    key={String(valor)}
+                    style={[s.chipEspecie, ativo && s.chipEspecieAtivo]}
+                    onPress={() => setContatoEditAtivado(valor)}
+                  >
+                    <Text style={[s.chipEspecieTexto, ativo && { color: '#fff' }]}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {contatoEditAtivado && (
+              <>
+                {contatosEdit.map((c, idx) => (
+                  <View key={idx} style={[s.editContatoRow, { marginTop: 10 }]}>
+                    <View style={s.editContatoTipos}>
+                      {[
+                        { tipo: 'whatsapp', label: 'WhatsApp', icon: 'logo-whatsapp' },
+                        { tipo: 'instagram', label: 'Instagram', icon: 'logo-instagram' },
+                        { tipo: 'outro', label: 'Outro', icon: 'ellipsis-horizontal' },
+                      ].map(({ tipo, label, icon }) => {
+                        const ativo = c.tipo === tipo;
+                        return (
+                          <TouchableOpacity
+                            key={tipo}
+                            style={[s.editContatoChip, ativo && s.editContatoChipAtivo]}
+                            onPress={() => atualizarContatoEdit(idx, 'tipo', tipo)}
+                          >
+                            <Ionicons name={icon} size={13} color={ativo ? '#fff' : colors.textMid} />
+                            <Text style={[s.editContatoChipTexto, ativo && { color: '#fff' }]}>{label}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 6 }}>
+                      <TextInput
+                        style={[s.formInput, { flex: 1 }]}
+                        value={c.valor}
+                        onChangeText={v => atualizarContatoEdit(idx, 'valor', c.tipo === 'whatsapp' ? mascaraTelefone(v) : v)}
+                        placeholder={
+                          c.tipo === 'whatsapp' ? 'Ex: 95 99999-9999'
+                          : c.tipo === 'instagram' ? 'Ex: @perfil'
+                          : 'Descreva o contato'
+                        }
+                        placeholderTextColor={colors.textLight}
+                        keyboardType={c.tipo === 'whatsapp' ? 'phone-pad' : 'default'}
+                        autoCapitalize="none"
+                      />
+                      <TouchableOpacity onPress={() => removerContatoEdit(idx)} style={{ padding: 8 }}>
+                        <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, alignSelf: 'flex-start' }}
+                  onPress={adicionarContatoEdit}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+                  <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '500' }}>Adicionar contato</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
             <TouchableOpacity
               style={[s.btnEncontrado, { marginTop: 24, marginBottom: 8, backgroundColor: colors.primary }]}
               onPress={async () => { const ok = await salvarEdicao(); if (ok) setModalEditar(false); }}
@@ -696,69 +791,23 @@ export default function DetalhePet() {
         </View>
       </Modal>
 
-      {/* Modal select de bairro para edição */}
-      <Modal
+      <SelectModal
         visible={modalBairroEdit}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setModalBairroEdit(false)}
-      >
-        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setModalBairroEdit(false)} />
-        <View style={s.modalSheet}>
-          <View style={s.modalHeader}>
-            <Text style={s.modalTitulo}>Selecione o bairro</Text>
-            <TouchableOpacity onPress={() => setModalBairroEdit(false)}>
-              <Ionicons name="close" size={22} color={colors.textMid} />
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            data={OPCOES_BAIRRO}
-            keyExtractor={item => item}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[s.modalItem, bairroEditSel === item && s.modalItemAtivo]}
-                onPress={() => { setBairroEditSel(item); if (item !== OPCAO_OUTRO) setBairroEditOutro(''); setModalBairroEdit(false); }}
-              >
-                <Text style={[s.modalItemTexto, bairroEditSel === item && s.modalItemTextoAtivo]}>{item}</Text>
-                {bairroEditSel === item && <Ionicons name="checkmark" size={18} color={colors.primary} />}
-              </TouchableOpacity>
-            )}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
-      </Modal>
+        title="Selecione o bairro"
+        data={OPCOES_BAIRRO}
+        value={bairroEditSel}
+        onSelect={item => { setBairroEditSel(item); if (item !== OPCAO_OUTRO) setBairroEditOutro(''); setModalBairroEdit(false); }}
+        onClose={() => setModalBairroEdit(false)}
+      />
 
-      {/* Modal select de raça para edição */}
-      <Modal
+      <SelectModal
         visible={modalRacaEdit}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setModalRacaEdit(false)}
-      >
-        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setModalRacaEdit(false)} />
-        <View style={s.modalSheet}>
-          <View style={s.modalHeader}>
-            <Text style={s.modalTitulo}>Selecione a raça</Text>
-            <TouchableOpacity onPress={() => setModalRacaEdit(false)}>
-              <Ionicons name="close" size={22} color={colors.textMid} />
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            data={RACAS[formEdit.especie] ?? [SEM_RACA]}
-            keyExtractor={item => item}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[s.modalItem, racaEditSel === item && s.modalItemAtivo]}
-                onPress={() => { setRacaEditSel(item); setModalRacaEdit(false); }}
-              >
-                <Text style={[s.modalItemTexto, racaEditSel === item && s.modalItemTextoAtivo]}>{item}</Text>
-                {racaEditSel === item && <Ionicons name="checkmark" size={18} color={colors.primary} />}
-              </TouchableOpacity>
-            )}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
-      </Modal>
+        title="Selecione a raça"
+        data={RACAS[formEdit.especie] ?? [SEM_RACA]}
+        value={racaEditSel}
+        onSelect={item => { setRacaEditSel(item); setModalRacaEdit(false); }}
+        onClose={() => setModalRacaEdit(false)}
+      />
     </View>
   );
 }
@@ -766,12 +815,6 @@ export default function DetalhePet() {
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  centro: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: colors.background,
   },
   fotoContainer: {
@@ -915,49 +958,43 @@ const s = StyleSheet.create({
     color: colors.textDark,
     lineHeight: 21,
   },
-  similaresSecao: {
+  contatosCard: {
     backgroundColor: colors.card,
     borderRadius: radius.md,
     padding: 16,
     marginBottom: 12,
+    gap: 12,
     ...shadow.card,
   },
-  similaresTitulo: {
+  contatosTitulo: {
     fontSize: 13,
     color: colors.textMid,
     ...font.bold,
+    marginBottom: 2,
   },
-  similarCard: {
-    width: 120,
-    marginRight: 10,
-    backgroundColor: colors.background,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border,
+  contatoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  similarFoto: {
-    width: 120,
-    height: 90,
-  },
-  similarFotoVazia: {
-    backgroundColor: colors.primaryLight,
+  contatoIcone: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  similarInfo: {
-    padding: 8,
-    gap: 2,
-  },
-  similarNome: {
-    fontSize: 12,
-    ...font.bold,
-    color: colors.textDark,
-  },
-  similarBairro: {
+  contatoTipoLabel: {
     fontSize: 10,
     color: colors.textLight,
     ...font.medium,
+    letterSpacing: 0.5,
+  },
+  contatoValorTexto: {
+    fontSize: 14,
+    color: colors.textDark,
+    ...font.bold,
+    marginTop: 1,
   },
   rodape: {
     padding: 16,
@@ -1166,50 +1203,6 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  modalSheet: {
-    backgroundColor: colors.card,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    maxHeight: '75%',
-    paddingBottom: 32,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  modalTitulo: {
-    fontSize: 16,
-    ...font.black,
-    color: colors.textDark,
-  },
-  modalItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  modalItemAtivo: {
-    backgroundColor: colors.primaryLight,
-  },
-  modalItemTexto: {
-    fontSize: 14,
-    color: colors.textDark,
-  },
-  modalItemTextoAtivo: {
-    color: colors.primary,
-    ...font.bold,
-  },
   btnAcoes: {
     width: 32,
     height: 32,
@@ -1220,19 +1213,34 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  acoesSheet: {
+  btnShare: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.full,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  popover: {
+    position: 'absolute',
+    top: 310,
+    right: 16,
     backgroundColor: colors.card,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    paddingBottom: 32,
-    paddingTop: 8,
+    borderRadius: radius.md,
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 100,
   },
   acaoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
   },
   acaoTexto: {
     fontSize: 15,
@@ -1327,5 +1335,57 @@ const s = StyleSheet.create({
   formSelectPlaceholder: {
     fontSize: 14,
     color: colors.textLight,
+  },
+  editContatoToggle: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 4,
+  },
+  editContatoRow: {
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  editContatoTipos: {
+    flexDirection: 'row',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  editContatoChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: colors.background,
+  },
+  editContatoChipAtivo: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  editContatoChipTexto: {
+    fontSize: 11,
+    color: colors.textMid,
+    ...font.medium,
+  },
+  btnPost: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: radius.lg,
+    paddingVertical: 11,
+    marginTop: 8,
+    backgroundColor: colors.primaryLight,
+  },
+  btnPostTexto: {
+    color: colors.primary,
+    ...font.bold,
+    fontSize: 14,
   },
 });

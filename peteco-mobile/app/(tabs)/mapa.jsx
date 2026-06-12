@@ -1,34 +1,25 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ActivityIndicator,
-  ScrollView, TouchableOpacity, Image,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { colors, font, radius, shadow } from '../../constants/theme';
 import useMapaController from '../../modules/pet/controller/useMapaController';
-
-function primeiraFoto(fotoUrl) {
-  if (!fotoUrl) return null;
-  try {
-    const parsed = JSON.parse(fotoUrl);
-    return Array.isArray(parsed) ? parsed[0] ?? null : fotoUrl;
-  } catch {
-    return fotoUrl;
-  }
-}
-
-function EspecieIcon({ especie, size = 18, color }) {
-  const cor = color ?? colors.primary;
-  if (especie === 'cachorro') return <MaterialCommunityIcons name="dog" size={size} color={cor} />;
-  if (especie === 'gato')     return <MaterialCommunityIcons name="cat" size={size} color={cor} />;
-  return <Ionicons name="paw-outline" size={size} color={cor} />;
-}
+import { useParseFoto } from '../../shared/hooks/useParseFoto';
+import EspecieIcon from '../../shared/components/EspecieIcon';
+import LoadingCentro from '../../shared/components/LoadingCentro';
+import EmptyState from '../../shared/components/EmptyState';
 
 export default function PorBairro() {
   const router = useRouter();
-  const { pets, loading } = useMapaController();
+  const { pets, loading, bairroUsuario } = useMapaController();
+  const { primeiraFoto } = useParseFoto();
   const [expandido, setExpandido] = useState(null);
+
+  useEffect(() => {
+    if (bairroUsuario) setExpandido(bairroUsuario);
+  }, [bairroUsuario]);
 
   const bairros = useMemo(() => {
     const mapa = {};
@@ -38,16 +29,14 @@ export default function PorBairro() {
       mapa[b].push(pet);
     }
     return Object.entries(mapa)
-      .sort((a, b) => b[1].length - a[1].length);
-  }, [pets]);
+      .sort((a, b) => {
+        if (a[0] === bairroUsuario) return -1;
+        if (b[0] === bairroUsuario) return 1;
+        return b[1].length - a[1].length;
+      });
+  }, [pets, bairroUsuario]);
 
-  if (loading) {
-    return (
-      <View style={s.centro}>
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
-    );
-  }
+  if (loading) return <LoadingCentro />;
 
   return (
     <View style={s.container}>
@@ -60,25 +49,28 @@ export default function PorBairro() {
 
       <ScrollView contentContainerStyle={s.lista} showsVerticalScrollIndicator={false}>
         {bairros.length === 0 ? (
-          <View style={s.vazio}>
-            <Ionicons name="location-outline" size={48} color={colors.textLight} />
-            <Text style={s.vazioTexto}>Nenhum pet cadastrado</Text>
-          </View>
+          <EmptyState icon="location-outline" title="Nenhum pet cadastrado" />
         ) : (
           bairros.map(([bairro, lista]) => {
             const aberto = expandido === bairro;
+            const isMeuBairro = bairro === bairroUsuario;
             return (
-              <View key={bairro} style={s.grupo}>
+              <View key={bairro} style={[s.grupo, isMeuBairro && s.grupoDestaque]}>
                 <TouchableOpacity
                   style={s.grupoCabecalho}
                   onPress={() => setExpandido(aberto ? null : bairro)}
                   activeOpacity={0.8}
                 >
                   <View style={s.grupoEsquerda}>
-                    <View style={s.pinIcon}>
-                      <Ionicons name="location" size={18} color={colors.primary} />
+                    <View style={[s.pinIcon, isMeuBairro && s.pinIconDestaque]}>
+                      <Ionicons name="location" size={18} color={isMeuBairro ? '#fff' : colors.primary} />
                     </View>
-                    <Text style={s.grupoNome}>{bairro}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.grupoNome}>{bairro}</Text>
+                      {isMeuBairro && (
+                        <Text style={s.meuBairroLabel}>Seu bairro</Text>
+                      )}
+                    </View>
                   </View>
                   <View style={s.grupoDireita}>
                     <View style={s.badge}>
@@ -137,12 +129,6 @@ const s = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  centro: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
   header: {
     padding: 20,
     paddingTop: 56,
@@ -162,21 +148,24 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 10,
   },
-  vazio: {
-    alignItems: 'center',
-    paddingTop: 60,
-    gap: 12,
-  },
-  vazioTexto: {
-    fontSize: 16,
-    ...font.bold,
-    color: colors.textMid,
-  },
   grupo: {
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     overflow: 'hidden',
     ...shadow.card,
+  },
+  grupoDestaque: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  pinIconDestaque: {
+    backgroundColor: colors.primary,
+  },
+  meuBairroLabel: {
+    fontSize: 10,
+    color: colors.primary,
+    ...font.bold,
+    marginTop: 1,
   },
   grupoCabecalho: {
     flexDirection: 'row',

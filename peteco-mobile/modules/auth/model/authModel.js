@@ -5,11 +5,11 @@ export async function login(email, senha) {
   if (error) throw error;
 }
 
-export async function cadastrar(email, senha, nome, telefone) {
+export async function cadastrar(email, senha, nome, telefone, bairro) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password: senha,
-    options: { data: { nome, telefone } },
+    options: { data: { nome, telefone, bairro } },
   });
   if (error) throw error;
   if (data.user) {
@@ -17,6 +17,7 @@ export async function cadastrar(email, senha, nome, telefone) {
       id: data.user.id,
       nome,
       telefone: telefone || null,
+      bairro:   bairro   || null,
     });
   }
   return data;

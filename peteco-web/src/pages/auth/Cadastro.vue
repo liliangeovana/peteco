@@ -1,25 +1,29 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { PawPrint, User, Mail, Lock, CheckCircle, ArrowRight, MapPin, BarChart2, ShieldCheck } from 'lucide-vue-next'
+import { PawPrint, User, Mail, Lock, CheckCircle, ArrowRight, ChevronDown, MapPin } from 'lucide-vue-next'
 import { useCadastro } from '../../modules/auth/controllers/useCadastro.js'
+import { BAIRROS_BOA_VISTA } from '../../constants/bairros.js'
+import AuthSidebar from '../../components/AuthSidebar.vue'
 
 const router  = useRouter()
 const { cadastrar } = useCadastro()
 const nome    = ref('')
 const email   = ref('')
 const senha   = ref('')
+const bairro  = ref('')
 const loading = ref(false)
 const erro    = ref('')
 const sucesso = ref(false)
 
 const handleCadastro = async () => {
   if (!nome.value || !email.value || !senha.value) { erro.value = 'Preencha todos os campos.'; return }
+  if (!bairro.value) { erro.value = 'Selecione seu bairro.'; return }
   if (senha.value.length < 6) { erro.value = 'Senha precisa ter pelo menos 6 caracteres.'; return }
   loading.value = true
   erro.value = ''
   try {
-    await cadastrar({ nome: nome.value, email: email.value, senha: senha.value })
+    await cadastrar({ nome: nome.value, email: email.value, senha: senha.value, bairro: bairro.value })
     sucesso.value = true
     setTimeout(() => router.push('/login'), 2000)
   } catch (e) {
@@ -34,64 +38,7 @@ const handleCadastro = async () => {
   <div style="min-height:100vh;display:flex;font-family:'Nunito',sans-serif;">
 
     <!-- ── Painel esquerdo ── -->
-    <div style="
-      width:42%;min-width:320px;
-      background:linear-gradient(160deg,#7C3AED 0%,#4C1D95 100%);
-      display:flex;flex-direction:column;justify-content:center;
-      padding:56px 52px;position:relative;overflow:hidden;
-    " class="hidden md:flex">
-
-      <div style="position:absolute;top:-80px;right:-80px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,0.05);"></div>
-      <div style="position:absolute;bottom:-60px;left:-60px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,0.05);"></div>
-
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:56px;">
-        <div style="width:44px;height:44px;background:rgba(255,255,255,0.18);border-radius:14px;display:flex;align-items:center;justify-content:center;">
-          <PawPrint :size="22" color="white" />
-        </div>
-        <span style="color:white;font-size:1.5rem;font-weight:900;letter-spacing:0.04em;">PETECO</span>
-      </div>
-
-      <h1 style="color:white;font-size:clamp(1.6rem,2.5vw,2.25rem);font-weight:900;line-height:1.2;margin-bottom:16px;">
-        Gestão de pets perdidos em Boa Vista
-      </h1>
-      <p style="color:rgba(255,255,255,0.72);font-size:0.95rem;font-weight:600;line-height:1.7;margin-bottom:48px;">
-        Plataforma B2G para análise, estatísticas e localização de pets em Roraima.
-      </p>
-
-      <div style="display:flex;flex-direction:column;gap:20px;">
-        <div style="display:flex;align-items:center;gap:14px;">
-          <div style="width:38px;height:38px;background:rgba(255,255,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <MapPin :size="18" color="white" />
-          </div>
-          <div>
-            <p style="color:white;font-weight:800;font-size:0.875rem;margin-bottom:2px;">Feed por localização</p>
-            <p style="color:rgba(255,255,255,0.6);font-size:0.8rem;font-weight:600;">Pets perdidos organizados por bairro</p>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:14px;">
-          <div style="width:38px;height:38px;background:rgba(255,255,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <BarChart2 :size="18" color="white" />
-          </div>
-          <div>
-            <p style="color:white;font-weight:800;font-size:0.875rem;margin-bottom:2px;">Analytics completo</p>
-            <p style="color:rgba(255,255,255,0.6);font-size:0.8rem;font-weight:600;">Estatísticas, espécie e taxa de retorno</p>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:14px;">
-          <div style="width:38px;height:38px;background:rgba(255,255,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <ShieldCheck :size="18" color="white" />
-          </div>
-          <div>
-            <p style="color:white;font-weight:800;font-size:0.875rem;margin-bottom:2px;">Acesso seguro</p>
-            <p style="color:rgba(255,255,255,0.6);font-size:0.8rem;font-weight:600;">Conta individual com sessão protegida</p>
-          </div>
-        </div>
-      </div>
-
-      <p style="position:absolute;bottom:28px;left:52px;color:rgba(255,255,255,0.35);font-size:0.75rem;font-weight:700;">
-        IFRR · DAMU + DAW · 2026
-      </p>
-    </div>
+    <AuthSidebar />
 
     <!-- ── Painel direito — formulário ── -->
     <div style="flex:1;display:flex;align-items:center;justify-content:center;background:#F7F5FB;padding:40px 24px;">
@@ -122,6 +69,7 @@ const handleCadastro = async () => {
               <input v-model="nome" class="input pl-9" placeholder="Seu nome" />
             </div>
           </div>
+
           <div class="field">
             <label class="label">E-mail</label>
             <div class="relative">
@@ -129,6 +77,19 @@ const handleCadastro = async () => {
               <input v-model="email" class="input pl-9" type="email" placeholder="seu@email.com" />
             </div>
           </div>
+
+          <div class="field">
+            <label class="label">Bairro *</label>
+            <div class="relative">
+              <MapPin :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color:#A099B0" />
+              <select v-model="bairro" class="input pl-9 pr-8" required>
+                <option value="">Selecione seu bairro</option>
+                <option v-for="b in BAIRROS_BOA_VISTA" :key="b.nome" :value="b.nome">{{ b.nome }}</option>
+              </select>
+              <ChevronDown :size="15" class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color:#A099B0" />
+            </div>
+          </div>
+
           <div class="field">
             <label class="label">Senha</label>
             <div class="relative">

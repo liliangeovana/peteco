@@ -4,7 +4,6 @@ import * as ImagePicker from 'expo-image-picker';
 import {
   buscarPetPorId,
   marcarEncontrado as marcarEncontradoModel,
-  listarSimilares,
   listarAvistamentos,
   criarAvistamento,
   marcarAvistamentosVistos,
@@ -23,8 +22,6 @@ export default function useDetalhePetController(id, onNaoEncontrado) {
   const [loading, setLoading]                   = useState(true);
   const [usuario, setUsuario]                   = useState(null);
   const [salvando, setSalvando]                 = useState(false);
-  const [similares, setSimilares]               = useState([]);
-  const [loadingSimilares, setLoadingSimilares] = useState(false);
   const [avistamentos, setAvistamentos]         = useState([]);
   const [loadingAvist, setLoadingAvist]         = useState(false);
 
@@ -39,6 +36,8 @@ export default function useDetalhePetController(id, onNaoEncontrado) {
   const [bairroEditOutro, setBairroEditOutro]     = useState('');
   const [salvandoEdicao, setSalvandoEdicao]       = useState(false);
   const [excluindo, setExcluindo]                 = useState(false);
+  const [contatoEditAtivado, setContatoEditAtivado] = useState(false);
+  const [contatosEdit, setContatosEdit]             = useState([]);
 
   // formulário de avistamento
   const [formAvist, setFormAvist]             = useState({ bairro: '', rua: '', descricao: '' });
@@ -53,7 +52,6 @@ export default function useDetalhePetController(id, onNaoEncontrado) {
         const [petData, user] = await Promise.all([buscarPetPorId(id), obterUsuario()]);
         setPet(petData);
         setUsuario(user);
-        buscarSim();
         buscarAvist();
 
         // marca avistamentos como vistos se o usuário logado é o dono
@@ -72,13 +70,6 @@ export default function useDetalhePetController(id, onNaoEncontrado) {
     };
     carregar();
   }, [id]);
-
-  const buscarSim = async () => {
-    setLoadingSimilares(true);
-    try { setSimilares(await listarSimilares(id)); }
-    catch { /* silencia */ }
-    finally { setLoadingSimilares(false); }
-  };
 
   const buscarAvist = async () => {
     setLoadingAvist(true);
@@ -173,6 +164,12 @@ export default function useDetalhePetController(id, onNaoEncontrado) {
     }
   };
 
+  const adicionarContatoEdit = () => setContatosEdit(c => [...c, { tipo: 'whatsapp', valor: '' }]);
+  const removerContatoEdit = (idx) => setContatosEdit(c => c.filter((_, i) => i !== idx));
+  const atualizarContatoEdit = (idx, campo, valor) => setContatosEdit(c => {
+    const n = [...c]; n[idx] = { ...n[idx], [campo]: valor }; return n;
+  });
+
   const iniciarEditar = () => {
     setFormEdit({
       nome: pet?.nome || '',
@@ -193,6 +190,19 @@ export default function useDetalhePetController(id, onNaoEncontrado) {
       const fotos = pet?.foto_url ? [pet.foto_url] : [];
       setFotosEdit(fotos);
       setFotosEditValidadas(fotos.map(() => true));
+    }
+    try {
+      const existentes = JSON.parse(pet?.contatos || '[]');
+      if (Array.isArray(existentes) && existentes.length > 0) {
+        setContatosEdit(existentes);
+        setContatoEditAtivado(true);
+      } else {
+        setContatosEdit([]);
+        setContatoEditAtivado(false);
+      }
+    } catch {
+      setContatosEdit([]);
+      setContatoEditAtivado(false);
     }
   };
 
@@ -266,6 +276,10 @@ export default function useDetalhePetController(id, onNaoEncontrado) {
       const urlsFinais = await Promise.all(
         fotosEdit.map(f => f.startsWith('http') ? f : uploadFoto(f))
       );
+      const contatosFiltrados = contatoEditAtivado
+        ? contatosEdit.filter(c => c.valor.trim())
+        : [];
+
       const petAtualizado = await atualizarPet(
         id,
         {
@@ -275,6 +289,7 @@ export default function useDetalhePetController(id, onNaoEncontrado) {
           bairro: bairroFinal,
           foto_url: urlsFinais.length > 0 ? JSON.stringify(urlsFinais) : null,
           raca: racaEditSel === SEM_RACA ? '' : racaEditSel,
+          contatos: contatosFiltrados.length > 0 ? JSON.stringify(contatosFiltrados) : null,
         },
         session?.access_token,
       );
@@ -341,7 +356,6 @@ export default function useDetalhePetController(id, onNaoEncontrado) {
 
   return {
     pet, loading, usuario, salvando,
-    similares, loadingSimilares,
     avistamentos, loadingAvist,
     formAvist, setAvist,
     bairroAvistSel, setBairroAvistSel,
@@ -361,5 +375,9 @@ export default function useDetalhePetController(id, onNaoEncontrado) {
     salvandoEdicao, salvarEdicao, iniciarEditar,
     // exclusão
     excluindo, confirmarExcluir,
+    // contatos edição
+    contatoEditAtivado, setContatoEditAtivado,
+    contatosEdit,
+    adicionarContatoEdit, removerContatoEdit, atualizarContatoEdit,
   };
 }

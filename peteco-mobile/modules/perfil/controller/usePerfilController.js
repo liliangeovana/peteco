@@ -5,7 +5,7 @@ import { buscarPerfil, salvarPerfil } from '../model/perfilModel';
 
 export default function usePerfilController(onNaoAutenticado, onLogout) {
   const [usuario, setUsuario]   = useState(null);
-  const [perfil, setPerfil]     = useState({ nome: '', telefone: '' });
+  const [perfil, setPerfil]     = useState({ nome: '', telefone: '', bairro: '' });
   const [loading, setLoading]   = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [editando, setEditando] = useState(false);
@@ -17,8 +17,8 @@ export default function usePerfilController(onNaoAutenticado, onLogout) {
         if (!user) { onNaoAutenticado?.(); return; }
         setUsuario(user);
         const data = await buscarPerfil(user.id);
-        if (data) setPerfil({ nome: data.nome || '', telefone: data.telefone || '' });
-        else      setPerfil({ nome: user.user_metadata?.nome || '', telefone: '' });
+        if (data) setPerfil({ nome: data.nome || '', telefone: data.telefone || '', bairro: data.bairro || '' });
+        else      setPerfil({ nome: user.user_metadata?.nome || '', telefone: '', bairro: user.user_metadata?.bairro || '' });
       } catch {
         /* mantém estado vazio */
       } finally {
@@ -31,7 +31,7 @@ export default function usePerfilController(onNaoAutenticado, onLogout) {
   const salvar = async () => {
     setSalvando(true);
     try {
-      await salvarPerfil(usuario.id, perfil.nome, perfil.telefone);
+      await salvarPerfil(usuario.id, perfil.nome, perfil.telefone, perfil.bairro);
       setEditando(false);
       Alert.alert('Perfil atualizado! ✅');
     } catch (err) {

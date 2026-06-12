@@ -2,7 +2,9 @@
 import { ref, onMounted } from 'vue'
 import { useAuth } from '../../modules/auth/controllers/useAuth.js'
 import { usePerfil } from '../../modules/auth/controllers/usePerfil.js'
-import { ArrowLeft, Save, User, Phone, Mail, Lock } from 'lucide-vue-next'
+import { ArrowLeft, Save, User, Phone, Mail, Lock, MapPin, ChevronDown } from 'lucide-vue-next'
+import { BAIRROS_BOA_VISTA } from '../../constants/bairros.js'
+import { useMascaraTelefone } from '../../composables/useMascaraTelefone.js'
 
 const { usuario, verificarSessao } = useAuth()
 const { atualizarPerfil } = usePerfil()
@@ -10,18 +12,23 @@ const loading  = ref(true)
 const salvando = ref(false)
 const mensagem = ref(null)
 
-const form = ref({ nome: '', telefone: '', senha: '', confirmarSenha: '' })
+const form = ref({ nome: '', telefone: '', bairro: '', senha: '', confirmarSenha: '' })
 
 onMounted(async () => {
   await verificarSessao()
   if (usuario.value) {
     form.value.nome     = usuario.value.nome     ?? ''
     form.value.telefone = usuario.value.telefone ?? ''
+    form.value.bairro   = usuario.value.bairro   ?? ''
   }
   loading.value = false
 })
 
 const salvar = async () => {
+  if (!form.value.bairro) {
+    mensagem.value = { tipo: 'erro', texto: 'Selecione seu bairro.' }
+    return
+  }
   if (form.value.senha && form.value.senha !== form.value.confirmarSenha) {
     mensagem.value = { tipo: 'erro', texto: 'As senhas não coincidem.' }
     return
@@ -32,6 +39,7 @@ const salvar = async () => {
     await atualizarPerfil({
       nome:     form.value.nome,
       telefone: form.value.telefone,
+      bairro:   form.value.bairro,
       senha:    form.value.senha || undefined,
     })
     mensagem.value = { tipo: 'sucesso', texto: 'Perfil atualizado com sucesso!' }
@@ -44,11 +52,18 @@ const salvar = async () => {
   }
 }
 
+function onTelefoneInput(e) {
+  form.value.telefone = mascaraTelefone(e.target.value)
+  e.target.value = form.value.telefone
+}
+
 const cancelar = () => {
   form.value.senha = ''
   form.value.confirmarSenha = ''
   mensagem.value = null
 }
+
+const { mascaraTelefone } = useMascaraTelefone()
 </script>
 
 <template>
@@ -84,13 +99,24 @@ const cancelar = () => {
           </div>
           <div class="field">
             <label class="label flex items-center gap-1"><Phone :size="11" /> Telefone / WhatsApp</label>
-            <input v-model="form.telefone" class="input" placeholder="(95) 98765-4321" />
+            <input :value="form.telefone" @input="onTelefoneInput" class="input" type="tel" placeholder="95 99999-9999" />
           </div>
         </div>
 
         <div class="field mb-4">
           <label class="label flex items-center gap-1"><Mail :size="11" /> E-mail (não editável)</label>
           <input :value="usuario?.email" class="input bg-neutral-50 text-neutral-400" disabled />
+        </div>
+
+        <div class="field mb-4">
+          <label class="label flex items-center gap-1"><MapPin :size="11" /> Bairro *</label>
+          <div class="relative">
+            <select v-model="form.bairro" class="input pr-8" required>
+              <option value="">Selecione seu bairro</option>
+              <option v-for="b in BAIRROS_BOA_VISTA" :key="b.nome" :value="b.nome">{{ b.nome }}</option>
+            </select>
+            <ChevronDown :size="15" class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-400" />
+          </div>
         </div>
 
         <div class="divider" />

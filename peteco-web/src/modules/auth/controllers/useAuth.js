@@ -13,10 +13,20 @@ export function useAuth() {
   async function verificarSessao() {
     try {
       const { data } = await http.get('/auth/me')
-      usuario.value = data
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-    } catch {
-      // Mantém dados em cache se API indisponível — não desloga o usuário
+      // Preserva o token salvo — /auth/me pode retornar token null em alguns fluxos
+      const tokenSalvo = usuario.value?.token ?? JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')?.token
+      const atualizado = { ...data, token: data.token ?? tokenSalvo }
+      usuario.value = atualizado
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(atualizado))
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        usuario.value = null
+        localStorage.removeItem(STORAGE_KEY)
+        if (router.currentRoute.value.meta?.requerAuth) {
+          router.push('/login')
+        }
+      }
+      // Para erros de rede (API indisponível), mantém cache local
     }
   }
 

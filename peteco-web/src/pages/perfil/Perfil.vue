@@ -2,8 +2,8 @@
 import { ref, onMounted } from 'vue'
 import { useAuth } from '../../modules/auth/controllers/useAuth.js'
 import {
-  MapPin, BrainCircuit, List, LayoutDashboard, ChevronRight,
-  User, Mail, Shield, Wifi, Pencil,
+  LayoutList, PlusCircle, List, ChevronRight,
+  User, Mail, MapPin, Pencil,
 } from 'lucide-vue-next'
 
 const { usuario, verificarSessao } = useAuth()
@@ -51,12 +51,8 @@ onMounted(async () => {
             <dd class="font-semibold text-neutral-800">{{ usuario.email }}</dd>
           </div>
           <div>
-            <dt class="label flex items-center gap-1"><Shield :size="11" /> Tipo de acesso</dt>
-            <dd><span class="badge-blue">Gestor</span></dd>
-          </div>
-          <div>
-            <dt class="label flex items-center gap-1"><Wifi :size="11" /> Sessão</dt>
-            <dd><span class="badge-green">Ativa</span></dd>
+            <dt class="label flex items-center gap-1"><MapPin :size="11" /> Bairro</dt>
+            <dd class="font-semibold text-neutral-800">{{ usuario.bairro || '—' }}</dd>
           </div>
         </dl>
       </div>
@@ -67,10 +63,9 @@ onMounted(async () => {
         <div class="flex flex-col gap-1">
           <RouterLink
             v-for="link in [
-              { to: '/feed',       Icon: MapPin,          label: 'Feed de pets',         color: '#7C3AED' },
-              { to: '/analytics', Icon: BrainCircuit,    label: 'Analytics & Clusters', color: '#3b82f6' },
-              { to: '/pets',      Icon: List,            label: 'Lista de pets',         color: '#2EBD7A' },
-              { to: '/analise',   Icon: LayoutDashboard, label: 'Análise detalhada',     color: '#f97316' },
+              { to: '/feed',      Icon: LayoutList,  label: 'Feed de pets',      color: '#7C3AED' },
+              { to: '/cadastrar', Icon: PlusCircle,  label: 'Cadastrar pet',      color: '#2EBD7A' },
+              { to: '/meus-pets', Icon: List,        label: 'Meus pets',          color: '#f97316' },
             ]"
             :key="link.to"
             :to="link.to"

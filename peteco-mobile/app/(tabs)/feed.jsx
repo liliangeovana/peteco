@@ -1,12 +1,14 @@
 import {
   View, Text, FlatList, TouchableOpacity,
-  StyleSheet, ActivityIndicator, RefreshControl, TextInput,
+  StyleSheet, RefreshControl, TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import CardPet from '../../modules/pet/components/CardPet';
 import { colors, radius, font, shadow } from '../../constants/theme';
 import useFeedController from '../../modules/pet/controller/useFeedController';
+import LoadingCentro from '../../shared/components/LoadingCentro';
+import EmptyState from '../../shared/components/EmptyState';
 
 const CATEGORIAS = [
   { label: 'Todos',     icon: 'apps',               lib: 'ion', filtro: '' },
@@ -27,7 +29,6 @@ export default function Feed() {
     <View>
       <View style={s.topo}>
         <View>
-          <Text style={s.boaVinda}>Olá!</Text>
           <Text style={s.titulo}>Pets Perdidos</Text>
         </View>
         <TouchableOpacity style={s.btnBusca} onPress={() => router.push('/busca')}>
@@ -84,13 +85,7 @@ export default function Feed() {
     </View>
   );
 
-  if (loading) {
-    return (
-      <View style={s.centro}>
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
-    );
-  }
+  if (loading) return <LoadingCentro />;
 
   return (
     <View style={s.container}>
@@ -109,11 +104,11 @@ export default function Feed() {
           />
         }
         ListEmptyComponent={
-          <View style={s.vazio}>
-            <Ionicons name="paw-outline" size={48} color={colors.textLight} style={{ marginBottom: 12 }} />
-            <Text style={s.vazioTexto}>Nenhum pet encontrado</Text>
-            <Text style={s.vazioSub}>Tente outra categoria ou cadastre um pet perdido</Text>
-          </View>
+          <EmptyState
+            icon="paw-outline"
+            title="Nenhum pet encontrado"
+            subtitle="Tente outra categoria ou cadastre um pet perdido"
+          />
         }
       />
     </View>
@@ -123,12 +118,6 @@ export default function Feed() {
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  centro: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: colors.background,
   },
   lista: {
@@ -218,21 +207,5 @@ const s = StyleSheet.create({
   contador: {
     fontSize: 13,
     color: colors.textMid,
-  },
-  vazio: {
-    alignItems: 'center',
-    paddingTop: 40,
-  },
-  vazioTexto: {
-    fontSize: 17,
-    ...font.bold,
-    color: colors.textDark,
-    marginBottom: 6,
-  },
-  vazioSub: {
-    fontSize: 13,
-    color: colors.textMid,
-    textAlign: 'center',
-    maxWidth: 240,
   },
 });
