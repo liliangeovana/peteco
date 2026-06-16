@@ -30,6 +30,9 @@ let   miniMap       = null
 
 const isOwner = computed(() => usuario.value?.id && pet.value?.usuario_id && usuario.value.id === pet.value.usuario_id)
 
+const temContatos = computed(() => pet.value?.contatos && parseContatos(pet.value.contatos).length > 0)
+const soMapa = computed(() => temLocalizacao.value && !temContatos.value)
+
 async function excluir() {
   if (!window.confirm(`Tem certeza que deseja excluir o cadastro de ${pet.value.nome}? Esta ação não pode ser desfeita.`)) return
   try {
@@ -120,9 +123,10 @@ function iniciarMiniMapa() {
   if (!centroLat) return
 
   const L = window.L
+  const interativo = avistsEntries.length > 0
   miniMap = L.map(miniMapEl.value, {
-    zoomControl: false, attributionControl: false,
-    dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
+    zoomControl: interativo, attributionControl: false,
+    dragging: interativo, scrollWheelZoom: interativo, doubleClickZoom: interativo,
   }).setView([centroLat, centroLng], exato ? 16 : 14)
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(miniMap)
@@ -294,7 +298,7 @@ onBeforeUnmount(() => { if (miniMap) { miniMap.remove(); miniMap = null } })
               </span>
             </template>
           </div>
-          <div ref="miniMapEl" style="height:200px;width:100%;isolation:isolate;" />
+          <div ref="miniMapEl" :style="{ height: soMapa ? '300px' : '200px', width: '100%', isolation: 'isolate' }" />
         </div>
 
         <!-- Contatos -->
