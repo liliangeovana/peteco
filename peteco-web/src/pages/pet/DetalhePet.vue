@@ -123,10 +123,9 @@ function iniciarMiniMapa() {
   if (!centroLat) return
 
   const L = window.L
-  const interativo = avistsEntries.length > 0
   miniMap = L.map(miniMapEl.value, {
-    zoomControl: interativo, attributionControl: false,
-    dragging: interativo, scrollWheelZoom: interativo, doubleClickZoom: interativo,
+    zoomControl: true, attributionControl: false,
+    dragging: true, scrollWheelZoom: true, doubleClickZoom: true,
   }).setView([centroLat, centroLng], exato ? 16 : 14)
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(miniMap)
