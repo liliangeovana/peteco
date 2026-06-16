@@ -19,6 +19,7 @@ const allowedOrigins = [
   'http://localhost:8081',
   'http://localhost:19006',
 ];
+console.log('[CORS] origins permitidos:', allowedOrigins);
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
