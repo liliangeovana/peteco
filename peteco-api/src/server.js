@@ -46,5 +46,17 @@ app.use('/pets', petsRouter);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
+app.get('/debug-env', async (req, res) => {
+  const { supabase } = await import('./lib/supabase.js');
+  const { data, error } = await supabase.from('pets_perdidos').select('id').limit(1);
+  res.json({
+    SUPABASE_URL: !!process.env.SUPABASE_URL,
+    SUPABASE_SERVICE_KEY: !!process.env.SUPABASE_SERVICE_KEY,
+    FRONTEND_URL: process.env.FRONTEND_URL,
+    supabase_ok: !error,
+    supabase_error: error?.message ?? null,
+  });
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, '0.0.0.0', () => console.log(`PETECO API rodando na porta ${PORT}`));
