@@ -92,6 +92,10 @@ const handleLogin = async () => {
           <RouterLink to="/cadastro" class="font-bold hover:underline" style="color:#7C3AED;">Criar conta</RouterLink>
         </p>
 
+        <p class="text-center text-sm mt-3" style="color:#A099B0;">
+          <RouterLink to="/" class="hover:underline" style="color:#A099B0;">← Voltar para a página inicial</RouterLink>
+        </p>
+
       </div>
     </div>
 
