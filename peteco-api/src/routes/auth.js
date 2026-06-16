@@ -6,7 +6,7 @@ const router = Router();
 
 router.post('/cadastro', async (req, res) => {
   try {
-    const { nome, email, senha, bairro } = req.body;
+    const { nome, email, senha, bairro, telefone } = req.body;
     if (!nome || !email || !senha) {
       return res.status(400).json({ erro: 'Nome, e-mail e senha são obrigatórios' });
     }
@@ -17,7 +17,7 @@ router.post('/cadastro', async (req, res) => {
     const { data, error } = await supabase.auth.admin.createUser({
       email,
       password: senha,
-      user_metadata: { nome, bairro },
+      user_metadata: { nome, bairro, ...(telefone ? { telefone } : {}) },
       email_confirm: true,
     });
     if (error) return res.status(400).json({ erro: error.message });

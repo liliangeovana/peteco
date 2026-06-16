@@ -1,20 +1,21 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { PawPrint, User, Mail, Lock, CheckCircle, ArrowRight, ChevronDown, MapPin } from 'lucide-vue-next'
+import { PawPrint, User, Mail, Lock, CheckCircle, ArrowRight, ChevronDown, MapPin, Phone } from 'lucide-vue-next'
 import { useCadastro } from '../../modules/auth/controllers/useCadastro.js'
 import { BAIRROS_BOA_VISTA } from '../../constants/bairros.js'
 import AuthSidebar from '../../components/AuthSidebar.vue'
 
 const router  = useRouter()
 const { cadastrar } = useCadastro()
-const nome    = ref('')
-const email   = ref('')
-const senha   = ref('')
-const bairro  = ref('')
-const loading = ref(false)
-const erro    = ref('')
-const sucesso = ref(false)
+const nome     = ref('')
+const email    = ref('')
+const telefone = ref('')
+const senha    = ref('')
+const bairro   = ref('')
+const loading  = ref(false)
+const erro     = ref('')
+const sucesso  = ref(false)
 
 const handleCadastro = async () => {
   if (!nome.value || !email.value || !senha.value) { erro.value = 'Preencha todos os campos.'; return }
@@ -23,7 +24,7 @@ const handleCadastro = async () => {
   loading.value = true
   erro.value = ''
   try {
-    await cadastrar({ nome: nome.value, email: email.value, senha: senha.value, bairro: bairro.value })
+    await cadastrar({ nome: nome.value, email: email.value, telefone: telefone.value, senha: senha.value, bairro: bairro.value })
     sucesso.value = true
     setTimeout(() => router.push('/login'), 2000)
   } catch (e) {
@@ -79,10 +80,18 @@ const handleCadastro = async () => {
           </div>
 
           <div class="field">
+            <label class="label">Telefone</label>
+            <div class="relative">
+              <Phone :size="16" class="absolute left-3 top-1/2 -translate-y-1/2" style="color:#A099B0" />
+              <input v-model="telefone" class="input pl-9" type="tel" placeholder="(95) 99999-9999" />
+            </div>
+          </div>
+
+          <div class="field">
             <label class="label">Bairro *</label>
             <div class="relative">
               <MapPin :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color:#A099B0" />
-              <select v-model="bairro" class="input pl-9 pr-8" required>
+              <select v-model="bairro" class="input pl-9 pr-8" required style="appearance:none;-webkit-appearance:none;">
                 <option value="">Selecione seu bairro</option>
                 <option v-for="b in BAIRROS_BOA_VISTA" :key="b.nome" :value="b.nome">{{ b.nome }}</option>
               </select>

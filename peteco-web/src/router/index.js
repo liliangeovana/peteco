@@ -39,6 +39,11 @@ const routes = [
     meta: { requerAuth: true }
   },
   {
+    path: '/pet/:id/editar',
+    component: () => import('../pages/pet/EditarPet.vue'),
+    meta: { requerAuth: true }
+  },
+  {
     path: '/perfil',
     component: () => import('../pages/perfil/Perfil.vue'),
     meta: { requerAuth: true }

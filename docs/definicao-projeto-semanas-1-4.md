@@ -20,7 +20,7 @@
 
 **Qual é o tema central?**
 
-O tema central é o **rastreamento e recuperação de animais domésticos perdidos**, com foco em facilitar a comunicação entre tutores e a comunidade por meio de geolocalização, inteligência artificial para validação de imagens e correspondência visual entre animais.
+O tema central é o **rastreamento e recuperação de animais domésticos perdidos**, com foco em facilitar a comunicação entre tutores e a comunidade por meio de geolocalização e inteligência artificial para validação de imagens.
 
 **Por que este tema é relevante?**
 
@@ -37,7 +37,6 @@ Atualmente, quando um animal de estimação se perde, os tutores não dispõem d
 - **Baixo alcance geográfico:** informações ficam presas em grupos fechados sem visibilidade na vizinhança exata onde o animal foi visto.
 - **Falta de padronização:** reportes sem foto validada, localização precisa ou dados de contato claros dificultam a identificação.
 - **Demora na resposta:** avistamentos da comunidade não chegam ao tutor de forma estruturada e notificada.
-- **Ausência de busca inteligente:** sem correspondência visual automática entre o animal desaparecido e animais encontrados.
 
 **Quem é o público-alvo?**
 
@@ -61,15 +60,16 @@ O **Peteco** é uma plataforma composta por um aplicativo mobile (para cidadãos
 2. Visualizar animais perdidos no feed e em agrupamentos por bairro.
 3. Registrar avistamentos do animal, notificando o tutor automaticamente.
 4. Validar fotos com IA antes do envio, garantindo qualidade e segurança do conteúdo.
-5. Realizar busca visual por similaridade para cruzar animais desaparecidos com animais encontrados.
+5. Gerar posts e stories personalizados para divulgação nas redes sociais.
 
 **Como resolve a problemática:**
 
 - Centraliza todos os reportes em uma única plataforma acessível por smartphone.
 - Geolocaliza ocorrências por bairro, facilitando a busca na área onde o pet foi visto por último.
-- Integra IA (Groq LLaMA Vision) para validar imagens em tempo real e identificar candidatos visuais similares.
+- Integra IA (Groq LLaMA Vision) para validar imagens em tempo real, garantindo qualidade dos registros.
 - Permite que qualquer cidadão registre avistamentos de forma estruturada, gerando uma linha do tempo de rastreamento.
 - Notifica tutores sobre novos avistamentos com badges de alerta no feed.
+- Gera posts e stories prontos para compartilhamento em redes sociais, ampliando o alcance da busca.
 
 **Funcionalidades essenciais (MVP):**
 
@@ -85,6 +85,7 @@ O **Peteco** é uma plataforma composta por um aplicativo mobile (para cidadãos
 | Busca por cidade e espécie | ✅ | ✅ |
 | Perfil de usuário | ✅ | ✅ |
 | Notificações de avistamentos | ✅ | ✅ |
+| Gerar post/story para redes sociais | ✅ | — |
 
 ---
 
@@ -95,16 +96,15 @@ O **Peteco** é uma plataforma composta por um aplicativo mobile (para cidadãos
 | # | Campo de Aplicação | Como é usado no Peteco |
 |---|---|---|
 | 1 | **Análise de imagem e visão computacional** | O modelo Groq LLaMA 4 Scout 17B Vision analisa cada foto enviada antes do cadastro, verificando se é realmente um animal e se não contém conteúdo sensível. |
-| 2 | **Correspondência visual e busca por similaridade** | O mesmo modelo recebe a imagem do pet desaparecido e compara com candidatos do banco, retornando um score de similaridade (0–10), permitindo identificar possíveis matches. |
-| 3 | **Tomada de decisão orientada a dados** | A plataforma web exibirá estatísticas e distribuição de pets por bairro, espécie e status, auxiliando gestores e órgãos municipais na tomada de decisões sobre campanhas de castração, adoção e vigilância animal. |
-| 4 | **Personalização de experiências** | O feed mobile prioriza automaticamente os pets do bairro do próprio usuário, personalizando a visualização com base no perfil cadastrado. |
+| 2 | **Tomada de decisão orientada a dados** | A plataforma web exibe estatísticas e distribuição de pets por bairro, espécie e status, auxiliando gestores e órgãos municipais na tomada de decisões sobre campanhas de castração, adoção e vigilância animal. |
+| 3 | **Personalização de experiências** | O feed mobile prioriza automaticamente os pets do bairro do próprio usuário, personalizando a visualização com base no perfil cadastrado. |
 
 **Contribuição para melhorias no campo escolhido:**
 
 - A **validação por IA** elimina registros com fotos inadequadas (objetos, imagens ofensivas), elevando a qualidade do banco de dados.
-- A **busca visual por similaridade** reduz o tempo de identificação de um animal encontrado, cruzando automaticamente características visuais com animais reportados como perdidos.
 - A **geolocalização + agrupamento por bairro** direciona cidadãos e voluntários para agirem na área certa, aumentando a taxa de recuperação.
 - O **registro estruturado de avistamentos** cria uma linha do tempo colaborativa, dando ao tutor dados concretos para rastrear o deslocamento do animal.
+- A **geração de posts e stories** amplifica o alcance da busca nas redes sociais sem esforço manual de design.
 
 ---
 
@@ -359,7 +359,7 @@ O **Peteco** é uma plataforma composta por um aplicativo mobile (para cidadãos
 
 **Tela 7: Detalhe do Pet**
 
-*Propósito:* Exibir todas as informações do pet, histórico de avistamentos e permitir ações (contatar tutor, registrar avistamento, marcar como encontrado).
+*Propósito:* Exibir todas as informações do pet, histórico de avistamentos e permitir ações (contatar tutor, registrar avistamento, marcar como encontrado, gerar post para redes sociais).
 
 *Elementos interativos:*
 - Carrossel de fotos com pontos de navegação
@@ -368,6 +368,7 @@ O **Peteco** é uma plataforma composta por um aplicativo mobile (para cidadãos
 - Cards de contato (WhatsApp, Instagram, Tel)
 - Timeline de avistamentos
 - Botão "Vi este pet!" (cidadão) ou "Encontrei meu pet!" (tutor)
+- Botão "Gerar post" → abre modal para criação de post/story para redes sociais
 - Ações do tutor: Editar | Excluir | Compartilhar
 
 *Wireframe (ASCII):*
@@ -397,9 +398,9 @@ O **Peteco** é uma plataforma composta por um aplicativo mobile (para cidadãos
 │ ● Caçari — 2h atrás        │
 │   "Vi perto do mercado..."  │
 │                             │
-│ ┌─────────────────────┐     │
-│ │    Vi este pet! 👁   │     │
-│ └─────────────────────┘     │
+│ ┌──────────┐ ┌────────────┐ │
+│ │Vi este 👁│ │ Gerar post │ │
+│ └──────────┘ └────────────┘ │
 └─────────────────────────────┘
 ```
 
@@ -532,6 +533,46 @@ O **Peteco** é uma plataforma composta por um aplicativo mobile (para cidadãos
 
 ---
 
+**Tela 11: Gerar Post / Story (Modal)**
+
+*Propósito:* Gerar imagem personalizada do pet para compartilhamento em redes sociais (Instagram, WhatsApp e outros), aumentando o alcance da busca.
+
+*Elementos interativos:*
+- Alternância de formato: Post (1:1) | Story (9:16)
+- Preview em tempo real do layout gerado
+- Toggles para exibir/ocultar campos: raça, cor, bairro, data, descrição, recompensa, contatos
+- Edição de contatos para exibição no post (até 3 contatos, incluindo custom)
+- Botão "Compartilhar" → gera PNG via ViewShot e abre compartilhamento nativo do dispositivo
+
+*Wireframe (ASCII):*
+```
+┌─────────────────────────────┐
+│ Gerar Post para Divulgação  │
+│ ─────────────────────────── │
+│                             │
+│  [  Post  ] [  Story  ]     │
+│                             │
+│ ┌─────────────────────────┐ │
+│ │      [preview do        │ │
+│ │       post/story]       │ │
+│ │   Rex — Cachorro        │ │
+│ │   Caçari • 2h           │ │
+│ │   📱 (95) 99999-9999    │ │
+│ └─────────────────────────┘ │
+│                             │
+│ Mostrar no post:            │
+│ ☑ Raça  ☑ Cor  ☑ Bairro   │
+│ ☑ Data  ☑ Contatos         │
+│ ☐ Descrição  ☑ Recompensa  │
+│                             │
+│ ┌─────────────────────┐     │
+│ │   📤 Compartilhar   │     │
+│ └─────────────────────┘     │
+└─────────────────────────────┘
+```
+
+---
+
 **Ações principais do usuário no app mobile:**
 
 - Cadastrar-se e fazer login
@@ -540,6 +581,7 @@ O **Peteco** é uma plataforma composta por um aplicativo mobile (para cidadãos
 - Visualizar pets agrupados por bairro
 - Visualizar detalhes de um pet e entrar em contato com o tutor
 - Registrar avistamento de um pet (com local, descrição e fotos)
+- Gerar post ou story para divulgação nas redes sociais
 - Gerenciar próprios pets: editar, marcar como encontrado, excluir
 - Editar perfil pessoal
 
@@ -552,6 +594,7 @@ O **Peteco** é uma plataforma composta por um aplicativo mobile (para cidadãos
 5. Registro de avistamento pela comunidade
 6. Gerenciamento de pets próprios (Meus Pets)
 7. Validação de fotos por IA (Groq)
+8. Geração de post/story para divulgação em redes sociais
 
 **Conexão funcionalidades → problemática:**
 
@@ -788,57 +831,6 @@ O sistema web é orientado à **gestão e visualização gerencial** dos dados d
 
 ---
 
-### API e Dados: Mobile e Web
-
-**Dados compartilhados entre mobile e web:**
-
-A mesma API REST é compartilhada pelos dois clientes. Os principais dados são:
-
-**Tabela `pets_perdidos`:**
-
-| Atributo | Tipo | Descrição |
-|---|---|---|
-| id | UUID (PK) | Identificador único |
-| usuario_id | UUID (FK) | Dono do reporte |
-| nome | text | Nome do animal |
-| especie | text | cachorro / gato / outro |
-| raca | text | Raça do animal |
-| cor | text | Cor predominante |
-| descricao | text | Descrição livre |
-| foto_url | JSON[] | Array de URLs de fotos no Supabase Storage |
-| data_perda | timestamp | Data/hora da perda |
-| bairro, endereco, cidade | text | Localização da perda |
-| localizacao | PostGIS POINT | Coordenadas GPS |
-| status | text | perdido / encontrado |
-| recompensa | boolean | Oferece recompensa |
-| valor_recompensa | numeric | Valor em R$ |
-| contatos | JSON[] | [{tipo, valor}] WhatsApp/Instagram/Tel |
-| criado_em, atualizado_em | timestamp | Auditoria |
-
-**Tabela `avistamentos`:**
-
-| Atributo | Tipo | Descrição |
-|---|---|---|
-| id | UUID (PK) | Identificador único |
-| pet_id | UUID (FK) | Pet avistado |
-| usuario_id | UUID (FK) | Quem registrou |
-| nome_usuario | text | Nome snapshot |
-| bairro, rua | text | Local do avistamento |
-| descricao | text | Descrição do avistamento |
-| fotos_url | JSON[] | Fotos do avistamento |
-| visto_pelo_dono | boolean | Tutor marcou como visto |
-| criado_em | timestamp | Data/hora |
-
-**API compartilhada ou distinta?**
-
-A plataforma utiliza **uma única API REST** (Express.js, porta 3001) compartilhada por ambos os clientes. A diferença está apenas no mecanismo de autenticação:
-- **Web:** autenticação via cookie de sessão (httpOnly, 24h)
-- **Mobile:** autenticação via Bearer JWT (token Supabase no header `Authorization`)
-
-O middleware `autenticar()` verifica ambos automaticamente, tornando os endpoints agnósticos ao cliente.
-
----
-
 ## Semana 3 — Implementação das Funcionalidades
 
 ### Aplicativo Móvel — Telas Implementadas
@@ -917,8 +909,8 @@ O middleware `autenticar()` verifica ambos automaticamente, tornando os endpoint
 
 **Descrição:**
 - **Elementos visuais:** Carrossel de fotos com pontos, badge de status colorido, grid de informações (4 cards), card de recompensa, cards de contato com ícones coloridos por tipo, timeline vertical de avistamentos com fotos.
-- **Ações do usuário:** Navegar fotos, tocar em contato (abre WhatsApp/Instagram/Tel), registrar avistamento (botão "Vi este pet!"), ou marcar como encontrado (tutor).
-- **Objetivo:** Centralizar todas as informações de um pet e facilitar a comunicação entre cidadãos e o tutor.
+- **Ações do usuário:** Navegar fotos, tocar em contato (abre WhatsApp/Instagram/Tel), registrar avistamento (botão "Vi este pet!"), gerar post/story para divulgação (botão "Gerar post"), ou marcar como encontrado (tutor).
+- **Objetivo:** Centralizar todas as informações de um pet, facilitar a comunicação entre cidadãos e o tutor, e ampliar o alcance da busca via redes sociais.
 
 ---
 
@@ -952,6 +944,17 @@ O middleware `autenticar()` verifica ambos automaticamente, tornando os endpoint
 - **Elementos visuais:** Avatar com inicial do nome em círculo roxo, campos de dados pessoais, botão "Editar" (alterna modo visualização/edição), links rápidos, botão "Sair" com borda vermelha.
 - **Ações do usuário:** Editar nome/telefone/bairro/senha, salvar ou cancelar edição, acessar atalhos de navegação, fazer logout.
 - **Objetivo:** Permitir que o usuário mantenha seus dados atualizados (especialmente o bairro, que impacta a personalização do feed).
+
+---
+
+**Tela 11: Gerar Post / Story (Modal)**
+
+> *[ Adicionar imagem da tela aqui ]*
+
+**Descrição:**
+- **Elementos visuais:** Modal com dois formatos selecionáveis (Post 1:1 e Story 9:16), preview ao vivo do layout, lista de campos com toggles (raça, cor, bairro, data, descrição, recompensa, contatos), seção de edição de contatos para exibição.
+- **Ações do usuário:** Selecionar formato, ativar/desativar campos desejados, editar contatos que aparecerão no post, tocar em "Compartilhar" para gerar o PNG e abrir o compartilhamento nativo do dispositivo.
+- **Objetivo:** Ampliar o alcance da busca pelo animal gerando uma arte de divulgação profissional para Instagram Stories, feed e WhatsApp, sem necessidade de edição manual de imagens.
 
 ---
 
@@ -1125,7 +1128,7 @@ A **Landing Page** é a única tela pública. Ela exibe informações gerais sob
 | **Node.js** | Ambiente de execução JavaScript server-side. Runtime base de toda a API. | https://nodejs.org/en/docs |
 | **Express.js 5** | Framework web minimalista para Node.js, utilizado para construir a API REST com roteamento, middlewares e handlers. | https://expressjs.com |
 | **@supabase/supabase-js** | SDK Supabase com Service Key para acesso privilegiado ao banco (CRUD), Storage (upload de fotos) e validação de tokens JWT mobile. | https://supabase.com/docs/reference/javascript |
-| **groq-sdk** | SDK oficial da Groq para consumo do modelo LLaMA 4 Scout 17B Vision, usado para validação de fotos e busca por similaridade visual. | https://console.groq.com/docs |
+| **groq-sdk** | SDK oficial da Groq para consumo do modelo LLaMA 4 Scout 17B Vision, usado para validação de fotos enviadas pelos usuários. | https://console.groq.com/docs |
 | **cors** | Middleware Express para habilitar CORS com whitelist de origens (Expo Go, localhost web, produção). | https://github.com/expressjs/cors |
 | **express-session** | Middleware de sessão server-side com cookie httpOnly para autenticação web. | https://github.com/expressjs/session |
 | **cookie-parser** | Middleware para parsing de cookies nas requisições HTTP. | https://github.com/expressjs/cookie-parser |
@@ -1146,6 +1149,7 @@ A **Landing Page** é a única tela pública. Ela exibe informações gerais sob
 - [ ] Feed: busca por nome, filtro por espécie, pull-to-refresh
 - [ ] Mapa: expansão/colapso de bairros, ordenação por contagem
 - [ ] Detalhe do pet: carrossel, avistamento, contatos (WhatsApp/Instagram/Tel)
+- [ ] Gerar post/story: seleção de formato, toggles de campos, compartilhamento nativo
 - [ ] Registro de avistamento: envio com e sem fotos
 - [ ] Meus Pets: filtro de status, marcar como encontrado, editar, excluir
 - [ ] Perfil: edição de dados, alteração de senha, logout
@@ -1174,7 +1178,7 @@ O banner deve ser entregue em formato `.pptx` para `george.oliveira@ifrr.edu.br`
 |---|---|
 | **Título do Projeto** | Peteco — Plataforma de Recuperação de Pets Perdidos |
 | **Nomes dos Integrantes** | *(inserir nomes completos)* |
-| **Tecnologias de IA** | Groq LLaMA 4 Scout 17B Vision — Validação de imagens e busca por similaridade visual |
+| **Tecnologias de IA** | Groq LLaMA 4 Scout 17B Vision — Validação de imagens enviadas pelos usuários |
 | **Problemática** | Ausência de plataforma centralizada e inteligente para reportar e localizar animais domésticos perdidos, com fragmentação de informações em grupos de redes sociais e sem triagem automatizada. |
 | **Solução** | Aplicativo mobile e sistema web integrados que permitem reportar pets perdidos com fotos (validadas por IA), geolocalização por bairro e avistamentos comunitários estruturados, acelerando a recuperação dos animais. |
 
@@ -1191,7 +1195,7 @@ O banner deve ser entregue em formato `.pptx` para `george.oliveira@ifrr.edu.br`
 5. **Demo Mobile (5-6 slides):** Prints das telas principais com legenda.
 6. **Demo Web (4-5 slides):** Prints das telas principais com legenda.
 7. **Tecnologias:** Lista visual de stacks usados.
-8. **IA no Peteco:** Explicação dos dois usos de IA (validação + similaridade).
+8. **IA no Peteco:** Explicação do uso de IA (validação de fotos com Groq LLaMA Vision).
 9. **Resultados / Próximos Passos:** O que foi entregue e roadmap futuro.
 10. **Conclusão + QR Code:** Link de acesso + QR Code para a aplicação web.
 

@@ -1,6 +1,5 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { MapPin, PawPrint, ChevronDown } from 'lucide-vue-next'
 import { http } from '../../client/http.js'
 import { BAIRROS_BOA_VISTA } from '../../constants/bairros.js'
 import { useAuth } from '../../modules/auth/controllers/useAuth.js'
@@ -100,8 +99,8 @@ function atualizarMarcadores() {
     ? todosPets.filter(p => p.bairro === filtroBairro.value)
     : todosPets
 
-  totalFiltrado.value = petsFiltrados.length
   let semPosicao = 0
+  let plotados = 0
 
   for (const pet of petsFiltrados) {
     let lat = pet.latitude  ? parseFloat(pet.latitude)  : null
@@ -113,12 +112,14 @@ function atualizarMarcadores() {
       else          { semPosicao++; continue }
     }
 
+    plotados++
     L.marker([lat, lng], { icon: criarIcone(pet) })
       .bindPopup(criarPopup(pet))
       .addTo(markersLayer)
   }
 
   semCoords.value = semPosicao
+  totalFiltrado.value = plotados
 
   if (filtroBairro.value) {
     const b = BAIRROS_BOA_VISTA.find(b => b.nome === filtroBairro.value)
@@ -171,21 +172,16 @@ onBeforeUnmount(() => { if (leafletMap) { leafletMap.remove(); leafletMap = null
 
     <!-- Filtro + contagem -->
     <div class="flex items-center gap-3 mb-4 flex-wrap">
-      <div class="relative">
-        <MapPin :size="14" class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color:#7C3AED;" />
-        <select
-          v-model="filtroBairro"
-          class="input pl-8 pr-8 text-sm"
-          style="min-width:200px;padding-top:8px;padding-bottom:8px;"
-        >
-          <option value="">Todos os bairros</option>
-          <option v-for="b in BAIRROS_BOA_VISTA" :key="b.nome" :value="b.nome">{{ b.nome }}</option>
-        </select>
-        <ChevronDown :size="14" class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-400" />
-      </div>
+      <select
+        v-model="filtroBairro"
+        class="input text-sm"
+        style="min-width:200px;padding-top:8px;padding-bottom:8px;"
+      >
+        <option value="">Todos os bairros</option>
+        <option v-for="b in BAIRROS_BOA_VISTA" :key="b.nome" :value="b.nome">{{ b.nome }}</option>
+      </select>
 
       <div v-if="!loading" class="flex items-center gap-1.5 text-sm font-semibold" style="color:#6B6578;">
-        <PawPrint :size="14" style="color:#7C3AED;" />
         <span>
           {{ totalFiltrado }} pet{{ totalFiltrado !== 1 ? 's' : '' }}
           <span v-if="filtroBairro"> em {{ filtroBairro }}</span>
@@ -199,22 +195,18 @@ onBeforeUnmount(() => { if (leafletMap) { leafletMap.remove(); leafletMap = null
     <!-- Cards de resumo -->
     <div v-if="!loading" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
       <div class="stat-card">
-        <PawPrint :size="20" style="color:#7C3AED;opacity:0.7;" />
         <span class="stat-num">{{ totalFiltrado }}</span>
         <span class="stat-label">{{ filtroBairro ? 'neste bairro' : 'total' }}</span>
       </div>
       <div class="stat-card">
-        <span class="stat-inicial">🐕</span>
         <span class="stat-num">{{ statsPorEspecie.cachorro }}</span>
         <span class="stat-label">cachorros</span>
       </div>
       <div class="stat-card">
-        <span class="stat-inicial">🐈</span>
         <span class="stat-num">{{ statsPorEspecie.gato }}</span>
         <span class="stat-label">gatos</span>
       </div>
       <div class="stat-card">
-        <span class="stat-inicial">🐾</span>
         <span class="stat-num">{{ statsPorEspecie.outro }}</span>
         <span class="stat-label">outros</span>
       </div>

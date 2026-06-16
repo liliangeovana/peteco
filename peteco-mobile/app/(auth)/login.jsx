@@ -34,7 +34,7 @@ export default function Login() {
       </TouchableOpacity>
 
       <Ionicons name="paw-outline" size={36} color={colors.primary} style={{ marginBottom: 8 }} />
-      <Text style={s.titulo}>Bem-vindo de volta</Text>
+      <Text style={s.titulo}>Bem-vindo(a)!</Text>
       <Text style={s.sub}>Entre para continuar ajudando pets perdidos</Text>
 
       <View style={s.form}>

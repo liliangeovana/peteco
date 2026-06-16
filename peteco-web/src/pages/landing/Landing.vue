@@ -66,7 +66,7 @@ const carrosselPets = computed(() => {
         <!-- Esquerda -->
         <div class="lp-hero-left">
           <span class="lp-pill">
-            <PawPrint :size="13" style="color:#7C3AED;" />
+            <PawPrint :size="13" style="color:#ffffff;" />
             Boa Vista · Roraima
           </span>
 
@@ -107,55 +107,6 @@ const carrosselPets = computed(() => {
               <span class="lp-stat-num" style="color:#2EBD7A;">IA</span>
               <span class="lp-stat-label">validação de fotos</span>
             </div>
-          </div>
-        </div>
-
-        <!-- Direita — cards flutuantes -->
-        <div class="lp-hero-right">
-          <div class="lp-float-wrap">
-            <!-- Card topo -->
-            <div class="lp-float-card lp-fc-top">
-              <div class="lp-fc-photo">
-                <img v-if="parseFoto(heroPets[0]?.foto_url)" :src="parseFoto(heroPets[0]?.foto_url)" />
-                <PawPrint v-else :size="22" style="color:#9B89C4;opacity:0.5;" />
-              </div>
-              <div class="lp-fc-info">
-                <p class="lp-fc-nome">{{ heroPets[0]?.nome }}</p>
-                <p class="lp-fc-bairro"><MapPin :size="10" /> {{ heroPets[0]?.bairro }}</p>
-              </div>
-              <span class="lp-fc-badge lp-fc-badge-red">perdido</span>
-            </div>
-
-            <!-- Card central (destaque) -->
-            <div class="lp-float-card lp-fc-center">
-              <div class="lp-fc-photo lp-fc-photo-lg">
-                <img v-if="parseFoto(heroPets[1]?.foto_url)" :src="parseFoto(heroPets[1]?.foto_url)" />
-                <PawPrint v-else :size="32" style="color:#9B89C4;opacity:0.5;" />
-              </div>
-              <div class="lp-fc-info">
-                <p class="lp-fc-nome">{{ heroPets[1]?.nome }}</p>
-                <p class="lp-fc-bairro"><MapPin :size="10" /> {{ heroPets[1]?.bairro }}</p>
-              </div>
-              <span class="lp-fc-badge lp-fc-badge-red">perdido</span>
-            </div>
-
-            <!-- Card base -->
-            <div class="lp-float-card lp-fc-bottom">
-              <div class="lp-fc-photo">
-                <img v-if="parseFoto(heroPets[2]?.foto_url)" :src="parseFoto(heroPets[2]?.foto_url)" />
-                <PawPrint v-else :size="22" style="color:#9B89C4;opacity:0.5;" />
-              </div>
-              <div class="lp-fc-info">
-                <p class="lp-fc-nome">{{ heroPets[2]?.nome }}</p>
-                <p class="lp-fc-bairro"><MapPin :size="10" /> {{ heroPets[2]?.bairro }}</p>
-              </div>
-              <span class="lp-fc-badge lp-fc-badge-red">perdido</span>
-            </div>
-
-            <!-- Accent shapes -->
-            <div class="accent accent-yellow" />
-            <div class="accent accent-pink" />
-            <div class="accent accent-blue" />
           </div>
         </div>
       </div>

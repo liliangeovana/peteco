@@ -1,13 +1,14 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { ArrowLeft, MapPin, Calendar, PawPrint, Tag, Gift } from 'lucide-vue-next'
+import { ArrowLeft, MapPin, Calendar, PawPrint, Tag, Gift, Pencil, Trash2, Clock } from 'lucide-vue-next'
 import { http } from '../../client/http.js'
 import { BAIRROS_BOA_VISTA } from '../../constants/bairros.js'
 import { useParseFoto } from '../../composables/useParseFoto.js'
 import { useFormatarData } from '../../composables/useFormatarData.js'
 import { useAvatarEmoji } from '../../composables/useAvatarEmoji.js'
 import { useNormalizarContatos } from '../../composables/useNormalizarContatos.js'
+import { useAuth } from '../../modules/auth/controllers/useAuth.js'
 import ContactItem from '../../components/ContactItem.vue'
 import PetPhotoCarousel from '../../components/PetPhotoCarousel.vue'
 
@@ -17,6 +18,7 @@ const { parsePrimeiraFoto, parseTodasFotos } = useParseFoto()
 const { formatarData } = useFormatarData()
 const { avatarEmoji } = useAvatarEmoji()
 const { parseContatos, formatarContato } = useNormalizarContatos()
+const { usuario } = useAuth()
 
 const pet           = ref(null)
 const nearby        = ref([])
@@ -25,6 +27,18 @@ const loading       = ref(true)
 const erro          = ref(null)
 const miniMapEl     = ref(null)
 let   miniMap       = null
+
+const isOwner = computed(() => usuario.value?.id && pet.value?.usuario_id && usuario.value.id === pet.value.usuario_id)
+
+async function excluir() {
+  if (!window.confirm(`Tem certeza que deseja excluir o cadastro de ${pet.value.nome}? Esta ação não pode ser desfeita.`)) return
+  try {
+    await http.delete(`/pets/${pet.value.id}`)
+    router.push('/meus-pets')
+  } catch {
+    alert('Erro ao excluir o pet. Tente novamente.')
+  }
+}
 
 // ── fotos ─────────────────────────────────────────────────────
 const fotos = computed(() => parseTodasFotos(pet.value?.foto_url))
@@ -184,9 +198,19 @@ onBeforeUnmount(() => { if (miniMap) { miniMap.remove(); miniMap = null } })
 
 <template>
   <div class="page">
-    <button class="btn-ghost text-xs mb-4 flex items-center gap-1" @click="router.back()">
-      <ArrowLeft :size="14" /> Voltar
-    </button>
+    <div class="flex items-center gap-2 mb-4">
+      <button class="btn-ghost text-xs flex items-center gap-1" @click="router.back()">
+        <ArrowLeft :size="14" /> Voltar
+      </button>
+      <template v-if="isOwner">
+        <RouterLink :to="'/pet/' + route.params.id + '/editar'" class="btn-ghost text-xs flex items-center gap-1 ml-auto">
+          <Pencil :size="13" /> Editar
+        </RouterLink>
+        <button class="text-xs flex items-center gap-1 font-bold px-3 py-1.5 rounded-lg transition-colors" style="color:#DC2626;background:#FEE2E2;" @click="excluir">
+          <Trash2 :size="13" /> Excluir
+        </button>
+      </template>
+    </div>
 
     <div v-if="loading" class="text-center py-20 text-neutral-400 font-semibold">Carregando...</div>
     <div v-else-if="erro" class="insight-critical">Não foi possível carregar os dados do pet.</div>
@@ -288,6 +312,34 @@ onBeforeUnmount(() => { if (miniMap) { miniMap.remove(); miniMap = null } })
           </div>
         </div>
 
+      </div>
+
+      <!-- ── HISTÓRICO DE AVISTAMENTOS ─────────────────── -->
+      <div v-if="avistamentos.length > 0" class="card mb-4">
+        <div class="flex items-center gap-2 mb-4">
+          <Clock :size="14" style="color:#7C3AED;" />
+          <p class="text-xs font-bold uppercase tracking-widest" style="color:#A099B0;">Histórico de avistamentos</p>
+          <span class="ml-auto text-xs font-bold px-2 py-0.5 rounded-full" style="background:#EDE9FE;color:#7C3AED;">{{ avistamentos.length }}</span>
+        </div>
+        <div class="historico-list">
+          <div
+            v-for="(a, i) in avistamentos"
+            :key="a.id || i"
+            class="historico-item"
+          >
+            <div class="historico-dot" />
+            <div class="historico-body">
+              <div class="flex items-center gap-2 flex-wrap mb-0.5">
+                <span class="text-xs font-black" style="color:#1A1626;">
+                  {{ a.bairro || 'Local não informado' }}{{ a.rua ? ' · ' + a.rua : '' }}
+                </span>
+                <span v-if="a.nome_usuario" class="text-xs font-semibold" style="color:#A099B0;">por {{ a.nome_usuario }}</span>
+              </div>
+              <p v-if="a.descricao" class="text-xs font-semibold mb-1" style="color:#6B6578;line-height:1.5;">{{ a.descricao }}</p>
+              <p class="text-xs" style="color:#C4BAD4;">{{ formatarData(a.criado_em) }}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ── PETS PRÓXIMOS ───────────────────────────────── -->
@@ -432,6 +484,40 @@ onBeforeUnmount(() => { if (miniMap) { miniMap.remove(); miniMap = null } })
   font-size: 0.67rem; font-weight: 600; color: #A099B0;
   margin: 0; text-transform: capitalize;
 }
+
+/* ── Histórico ────────────────────────────────────────── */
+.historico-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.historico-item {
+  display: flex;
+  gap: 12px;
+  position: relative;
+  padding-bottom: 16px;
+}
+.historico-item:last-child { padding-bottom: 0; }
+.historico-item:last-child .historico-dot::after { display: none; }
+.historico-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #7C3AED;
+  flex-shrink: 0;
+  margin-top: 3px;
+  position: relative;
+}
+.historico-dot::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: 4px;
+  width: 2px;
+  bottom: -16px;
+  background: #E5E0F0;
+}
+.historico-body { flex: 1; min-width: 0; }
 
 /* ── Responsivo ───────────────────────────────────────── */
 @media (max-width: 500px) {

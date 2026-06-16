@@ -415,7 +415,7 @@ export default function DetalhePet() {
         onRequestClose={() => setModalAvist(false)}
       >
         <KeyboardAvoidingView
-          style={{ flex: 1 }}
+          style={{ flex: 1, justifyContent: 'flex-end' }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
         <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setModalAvist(false)} />
@@ -1370,6 +1370,32 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: colors.textMid,
     ...font.medium,
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  modalSheet: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    maxHeight: '85%',
+    paddingBottom: 32,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitulo: {
+    fontSize: 16,
+    ...font.black,
+    color: colors.textDark,
   },
   btnPost: {
     flexDirection: 'row',
