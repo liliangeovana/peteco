@@ -15,13 +15,12 @@ if (!process.env.SESSION_SECRET) {
 const app = express();
 
 const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:5173',
-  'http://localhost:8081',  // Expo web/Metro
-  'http://localhost:19006', // Expo Go web
+  ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(o => o.trim()) : ['http://localhost:5173']),
+  'http://localhost:8081',
+  'http://localhost:19006',
 ];
 app.use(cors({
   origin: (origin, callback) => {
-    // permite requisições sem origin (React Native nativo, Postman, etc.)
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
     callback(new Error('CORS: origem não permitida'));
   },
