@@ -317,7 +317,7 @@ const s = StyleSheet.create({
     width: '100%',
   },
   contatoChip: {
-    flex: 1,
+    alignSelf: 'stretch',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
